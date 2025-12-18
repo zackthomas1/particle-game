@@ -10,6 +10,7 @@ by Jeffery Myers is marked with CC0 1.0. To view a copy of this license, visit h
 #include "raylib.h"
 #include "resource_dir.h"	// utility header for SearchAndSetResourceDir
 
+#define MAX_TOUCH_POINTS 10
 
 // ------------------------
 // Program main entry point
@@ -32,32 +33,24 @@ int main ()
     int currentFPS = 60;
     SetTargetFPS(currentFPS); 
 
-    Vector2 ballPosition = { (float)screenWidth / 2, (float)screenHeight / 2 };
-    Color ballColor = DARKBLUE;
+    Vector2 touchPositions[MAX_TOUCH_POINTS] = { 0 };
     
     // Main game loop
     while (!WindowShouldClose())        // run the loop until the user presses ESCAPE or presses the Close button on the window
     {
         // Update
         // -----------------------
-        if (IsKeyPressed(KEY_H)) {
-            if (IsCursorHidden()) {
-                ShowCursor(); 
-            }
-            else {
-                HideCursor();
-            }
+        // Get the touch point count (how many fingers are touching screen)
+        int tCount = GetTouchPointCount();
+
+        // Clamp touch points available
+        if (tCount > MAX_TOUCH_POINTS) {
+            tCount = MAX_TOUCH_POINTS;
         }
 
-        ballPosition = GetMousePosition();
-
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) { ballColor = MAROON; }
-        else if (IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE)) { ballColor = LIME; }
-        else if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) { ballColor = DARKBLUE; }
-        else if (IsMouseButtonPressed(MOUSE_BUTTON_SIDE)) { ballColor = PURPLE; }
-        else if (IsMouseButtonPressed(MOUSE_BUTTON_EXTRA)) { ballColor = YELLOW; }
-        else if (IsMouseButtonPressed(MOUSE_BUTTON_FORWARD)) { ballColor = ORANGE; }
-        else if (IsMouseButtonPressed(MOUSE_BUTTON_BACK)) { ballColor = BEIGE; }
+        for (int i = 0; i < tCount; i++) {
+            touchPositions[i] = GetTouchPosition(i);
+        }
 
         // -----------------------
 
@@ -68,16 +61,15 @@ int main ()
         // Setup the back buffer for drawing (clear color and depth buffers)
         ClearBackground(RAYWHITE);
 
-        DrawCircleV(ballPosition, 50, ballColor);
-
-        DrawText("move ball with mouse and click mouse button to change color", 10, 10, 20, DARKGRAY);
-        DrawText("Press 'H' to toggle cursor visibility", 10, 30, 20, DARKGRAY);
-
-        if (IsCursorHidden()) { 
-            DrawText("CURSOR HIDDEN", 20, 60, 20, RED); 
-        } else {
-            DrawText("CURSOR VISIBLE", 20, 60, 20, LIME);
+        for (int i = 0; i < tCount; i++) {
+            if ((touchPositions[i].x > 0) && (touchPositions[i].y > 0)) {
+                // Draw circle and touch index number 
+                DrawCircleV(touchPositions[i], 34, ORANGE); 
+                DrawText(TextFormat("%d", i), (int)touchPositions[i].x - 10, (int)touchPositions[i].y - 70, 40, BLACK);
+            }
         }
+
+        DrawText("touch the screen at multiple locations to get multiple balls", 10, 10, 20, DARKGRAY);
 
         // end the frame and get ready for the next one  (display frame, poll input, etc...)
         EndDrawing();
