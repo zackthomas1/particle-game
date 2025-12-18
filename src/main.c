@@ -33,17 +33,31 @@ int main ()
     SetTargetFPS(currentFPS); 
 
     Vector2 ballPosition = { (float)screenWidth / 2, (float)screenHeight / 2 };
-    const float offset = 2.0f;
-
+    Color ballColor = DARKBLUE;
+    
     // Main game loop
     while (!WindowShouldClose())        // run the loop until the user presses ESCAPE or presses the Close button on the window
     {
         // Update
         // -----------------------
-        if (IsKeyDown(KEY_RIGHT)) { ballPosition.x += offset; }
-        if (IsKeyDown(KEY_LEFT)) { ballPosition.x -= offset; }
-        if (IsKeyDown(KEY_UP)) { ballPosition.y -= offset; }
-        if (IsKeyDown(KEY_DOWN)) { ballPosition.y += offset; }
+        if (IsKeyPressed(KEY_H)) {
+            if (IsCursorHidden()) {
+                ShowCursor(); 
+            }
+            else {
+                HideCursor();
+            }
+        }
+
+        ballPosition = GetMousePosition();
+
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) { ballColor = MAROON; }
+        else if (IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE)) { ballColor = LIME; }
+        else if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) { ballColor = DARKBLUE; }
+        else if (IsMouseButtonPressed(MOUSE_BUTTON_SIDE)) { ballColor = PURPLE; }
+        else if (IsMouseButtonPressed(MOUSE_BUTTON_EXTRA)) { ballColor = YELLOW; }
+        else if (IsMouseButtonPressed(MOUSE_BUTTON_FORWARD)) { ballColor = ORANGE; }
+        else if (IsMouseButtonPressed(MOUSE_BUTTON_BACK)) { ballColor = BEIGE; }
 
         // -----------------------
 
@@ -54,8 +68,16 @@ int main ()
         // Setup the back buffer for drawing (clear color and depth buffers)
         ClearBackground(RAYWHITE);
 
-        DrawText("move ball with arrow keys", 10, 10, 20, DARKGRAY); 
-        DrawCircleV(ballPosition, 50, MAROON);
+        DrawCircleV(ballPosition, 50, ballColor);
+
+        DrawText("move ball with mouse and click mouse button to change color", 10, 10, 20, DARKGRAY);
+        DrawText("Press 'H' to toggle cursor visibility", 10, 30, 20, DARKGRAY);
+
+        if (IsCursorHidden()) { 
+            DrawText("CURSOR HIDDEN", 20, 60, 20, RED); 
+        } else {
+            DrawText("CURSOR VISIBLE", 20, 60, 20, LIME);
+        }
 
         // end the frame and get ready for the next one  (display frame, poll input, etc...)
         EndDrawing();
