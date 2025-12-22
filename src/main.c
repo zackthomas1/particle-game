@@ -35,7 +35,7 @@ int main ()
         // -----------------------
         float deltaTime = GetFrameTime();
         
-        if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) { SpawnParticle(particleFactory); }
+        if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) { SpawnParticle(particleFactory, &defaultParticleProps); }
         
         particleFactory->position = GetMousePosition();
         UpdateParticles(particleFactory, deltaTime);
