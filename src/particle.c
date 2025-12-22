@@ -2,103 +2,117 @@
 #include "particle.h"
 
 ParticleProps defaultParticleProps = {
-    { 10.0f, 10.0f,},   // lifetimeRemaining
-    { 0.0f, 0.0f},    // position
+    { 10.0f, 0.0f,},    // lifetime
+    { 0.0f, 0.0f},      // position
     { 0.0f, -50.0f},    // velocity
     { 0.0f, 9.8f},      // acceleration
     { 4.0f, 1.0f},      // size
     { RED, ORANGE}      // color
- };
+};
 
-ParticleFactory* ConstructParticleFactory() 
+static ParticlePool* ConstructParticlePool_() 
 {
-    ParticleFactory* factory = (ParticleFactory*)malloc(sizeof(ParticleFactory));
-    
-    factory->activeCount = 0;
-    factory->position = (Vector2){ 0 };
+    ParticlePool *pool = (ParticlePool*)malloc(sizeof(ParticlePool));
 
     for (int i = 0; i < MAX_PARTICLE_COUNT; i++) 
     {
-        factory->pLifetimes[i]  = (ParticleLifetime){ 0 };
+        pool->pLifetimes[i]  = (ParticleLifetime){ 0 };
 
-        factory->pPositions[i]      = (Vector2){ 0 };
-        factory->pVelocities[i]     = (Vector2){ 0 };
-        factory->pAccelations[i]    = (Vector2){ 0 };
+        pool->pPositions[i]      = (Vector2){ 0 };
+        pool->pVelocities[i]     = (Vector2){ 0 };
+        pool->pAccelations[i]    = (Vector2){ 0 };
         
-        factory->pSizes[i]  = (ParticleSize){ 0 };
-        factory->pColors[i] = (ParticleColor){ 0 };
+        pool->pSizes[i]  = (ParticleSize){ 0 };
+        pool->pColors[i] = (ParticleColor){ 0 };
     }
 
-    return factory;
+    return pool;
 }
 
-void DestructParticleFactory(ParticleFactory* factory) 
+static void DestructParticlePool_(ParticlePool *pool) 
 {
-    factory->activeCount = 0;
-    free(factory);
+    free(pool);
 }
 
-void SpawnParticle(ParticleFactory* factory, const ParticleProps *props) 
+static void SwapParticles_(ParticlePool *pool, size_t i, size_t j)
 {
-    PASSERT(factory->activeCount < MAX_PARTICLE_COUNT, "active particle count greater than MAX_PARTICLE_COUNT")
-    size_t i = factory->activeCount;
+    pool->pLifetimes[i]      = pool->pLifetimes[j];
 
-    factory->activeCount += 1;
+    pool->pPositions[i]      = pool->pPositions[j];
+    pool->pVelocities[i]     = pool->pVelocities[j];
+    pool->pAccelations[i]    = pool->pAccelations[j];
 
-    factory->pLifetimes[i]      = props->lifetime;
-
-    factory->pPositions[i]      = factory->position;
-    factory->pVelocities[i]     = props->velocity;
-    factory->pAccelations[i]    = props->acceleration;
-
-    factory->pSizes[i]  = props->size;
-    factory->pColors[i] = props->color;
+    pool->pSizes[i]  = pool->pSizes[j];
+    pool->pColors[i] = pool->pColors[j];
 }
 
-void KillParticle(ParticleFactory* factory, size_t index) 
+static void KillParticle_(ParticleSystem *system, size_t index) 
 {
-    factory->activeCount--;
-    SwapParticles_(factory, index, factory->activeCount);
+    system->activeCount--;
+    SwapParticles_(system->pool_, index, system->activeCount);
 }
 
-void UpdateParticles(ParticleFactory* factory, float deltaTime) 
+ParticleSystem* ConstructParticleSystem()
+{
+    ParticleSystem* system = (ParticleSystem*)malloc(sizeof(ParticleSystem));
+    
+    system->emitter.position    = (Vector2){ 0 };
+    system->emitter.radius      = 4.0f;
+    
+    system->pool_ = ConstructParticlePool_();
+
+    return system;
+}
+
+void DestructParticleSystem(ParticleSystem *system)
+{
+    DestructParticlePool_(system->pool_);
+    free(system);
+}
+
+void EmitParticle(ParticleSystem *system, const ParticleProps *props) 
+{
+    size_t i = system->activeCount;
+    PASSERT(i < MAX_PARTICLE_COUNT, "active particle count greater than MAX_PARTICLE_COUNT")
+
+    system->activeCount += 1;
+
+    system->pool_->pLifetimes[i]      = props->lifetime;
+
+    system->pool_->pPositions[i]      = system->emitter.position;
+    system->pool_->pVelocities[i]     = props->velocity;
+    system->pool_->pAccelations[i]    = props->acceleration;
+
+    system->pool_->pSizes[i]  = props->size;
+    system->pool_->pColors[i] = props->color;
+}
+
+void UpdateParticles(ParticleSystem *system, float deltaTime) 
 {
     size_t deadCount = 0;
-    for (size_t i = 0; i < factory->activeCount; i++) 
+    for (size_t i = 0; i < system->activeCount; i++) 
     {
-        factory->pLifetimes[i].lifetimeRemaining -= deltaTime;
-        if (factory->pLifetimes[i].lifetimeRemaining < 0.0f) 
+        system->pool_->pLifetimes[i].lifespan += deltaTime;
+        if (system->pool_->pLifetimes[i].lifespan > system->pool_->pLifetimes[i].lifetime) 
         { 
             deadCount++;
-            SwapParticles_(factory, i, (factory->activeCount - deadCount));
+            SwapParticles_(system->pool_, i, (system->activeCount - deadCount));
         }
     }
-    factory->activeCount -= deadCount;
+    system->activeCount -= deadCount;
 
-    for (size_t i = 0; i < factory->activeCount; i++)
+    for (size_t i = 0; i < system->activeCount; i++)
     {
-        factory->pVelocities[i]  = Vector2Add(factory->pVelocities[i], Vector2Scale(factory->pAccelations[i], deltaTime));
-        factory->pPositions[i]   = Vector2Add(factory->pPositions[i], Vector2Scale(factory->pVelocities[i], deltaTime));
+        system->pool_->pVelocities[i]  = Vector2Add(system->pool_->pVelocities[i], Vector2Scale(system->pool_->pAccelations[i], deltaTime));
+        system->pool_->pPositions[i]   = Vector2Add(system->pool_->pPositions[i], Vector2Scale(system->pool_->pVelocities[i], deltaTime));
     }
 }
 
-void DrawParticles(ParticleFactory* factory) 
+void DrawParticles(ParticleSystem *system)
 {
-    for (size_t i = 0; i < factory->activeCount; i++){
-        float currentSize = factory->pSizes[i].startSize;
-        Color currentColor = factory->pColors[i].startColor;
-        DrawCircleV(factory->pPositions[i], currentSize, currentColor);
+    for (size_t i = 0; i < system->activeCount; i++){
+        float currentSize   = system->pool_->pSizes[i].startSize;
+        Color currentColor  = system->pool_->pColors[i].startColor;
+        DrawCircleV(system->pool_->pPositions[i], currentSize, currentColor);
     }
-}
-
-static void SwapParticles_(ParticleFactory* factory, size_t i, size_t j)
-{
-    factory->pLifetimes[i]      = factory->pLifetimes[j];
-
-    factory->pPositions[i]      = factory->pPositions[j];
-    factory->pVelocities[i]     = factory->pVelocities[j];
-    factory->pAccelations[i]    = factory->pAccelations[j];
-
-    factory->pSizes[i]  = factory->pSizes[j];
-    factory->pColors[i] = factory->pColors[j];
 }

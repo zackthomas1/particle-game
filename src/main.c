@@ -23,8 +23,7 @@ int main ()
     Camera2D camera = { 0 }; 
     camera.zoom = 1.0f;
 
-    ParticleFactory* particleFactory  = ConstructParticleFactory();
-    particleFactory->position = (Vector2){ screenWidth / 2.0f, screenHeight / 2.0f };
+    ParticleSystem* particleSystem = ConstructParticleSystem(); 
 
     const float offset = 10.0f;
 
@@ -35,10 +34,10 @@ int main ()
         // -----------------------
         float deltaTime = GetFrameTime();
         
-        if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) { SpawnParticle(particleFactory, &defaultParticleProps); }
+        if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) { EmitParticle(particleSystem, &defaultParticleProps); }
         
-        particleFactory->position = GetMousePosition();
-        UpdateParticles(particleFactory, deltaTime);
+        particleSystem->emitter.position = GetMousePosition();
+        UpdateParticles(particleSystem, deltaTime);
 
         // Drawing
         // ------------------------
@@ -59,9 +58,9 @@ int main ()
                 rlPopMatrix();
 
                 //
-                DrawCircleV(particleFactory->position, 4, BLUE);
+                DrawCircleV(particleSystem->emitter.position, 4, BLUE);
 
-                DrawParticles(particleFactory);
+                DrawParticles(particleSystem);
             }
             EndMode2D();
             
@@ -70,7 +69,7 @@ int main ()
             DrawRectangleLines(5, 10, 320, 93, BLUE);
             DrawText(TextFormat("FPS: %i ", GetFPS()), 10, 10, 10, DARKGRAY);
             DrawText(TextFormat("Frame time: %02.02f ms", GetFrameTime()), 10, 20, 10, DARKGRAY);
-            DrawText(TextFormat("Particle count: %i", particleFactory->activeCount), 10, 30, 10, DARKGRAY);
+            DrawText(TextFormat("Particle count: %i", particleSystem->activeCount), 10, 30, 10, DARKGRAY);
         }
         // end the frame and get ready for the next one  (display frame, poll input, etc...)
         EndDrawing();
@@ -78,7 +77,7 @@ int main ()
     // De-Initialization
     // ------------------------
     // destroy the window and cleanup the OpenGL context
-    DestructParticleFactory(particleFactory);
+    DestructParticleSystem(particleSystem);
     
     CloseWindow();
     return 0;

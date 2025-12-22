@@ -10,7 +10,7 @@ typedef enum {
 
 typedef struct ParticleLifetime
 {
-    float lifetime, lifetimeRemaining;
+    float lifetime, lifespan;
 }ParticleLifetime;
 
 typedef struct ParticleSize
@@ -35,13 +35,8 @@ typedef struct ParticleProps
     ParticleColor color;
 }ParticleProps;
 
-extern ParticleProps defaultParticleProps;
-
-typedef struct ParticleFactory 
+typedef struct ParticlePool
 {
-    Vector2 position;
-    size_t activeCount;
-
     ParticleLifetime pLifetimes[MAX_PARTICLE_COUNT];
 
     Vector2 pPositions[MAX_PARTICLE_COUNT];
@@ -51,24 +46,38 @@ typedef struct ParticleFactory
     ParticleSize pSizes[MAX_PARTICLE_COUNT];
     ParticleColor pColors[MAX_PARTICLE_COUNT];
 
-}ParticleFactory;
+}ParticlePool;
 
-type
+typedef struct ParticleEmitter
+{
+    Vector2 position;
+    float radius;
+
+    // TODO: implement particle pool chunking to enable the use of multiple 
+    // particle emitter each of which is emit and kill particles within its allocated
+    // index range of the particle pool.
+    // size_t startIndex, size;
+}ParticleEmitter;
 
 typedef struct ParticleSystem 
 {
-    Vector2 gravity; 
-    Vector2 wind;
-    ParticleFactory *factory;
-
+    size_t activeCount;
+    ParticleEmitter emitter;
+    ParticlePool *pool_;
 }ParticleSystem;
 
-ParticleFactory* ConstructParticleFactory();
-void DestructParticleFactory(ParticleFactory* factory);
+extern ParticleProps defaultParticleProps;
 
-void SpawnParticle(ParticleFactory* factory, const ParticleProps *props);
-void KillParticle(ParticleFactory* factory, size_t index);
-void UpdateParticles(ParticleFactory* factory, float deltaTime);
-void DrawParticles(ParticleFactory* factory);
+static ParticlePool* ConstructParticlePool_();
+static void DestructParticlePool_(ParticlePool *factory);
 
-static void SwapParticles_(ParticleFactory* factory, size_t i, size_t j);
+static void SwapParticles_(ParticlePool *pool, size_t i, size_t j);
+static void KillParticle_(ParticleSystem *system, size_t index);
+
+ParticleSystem* ConstructParticleSystem();
+void DestructParticleSystem(ParticleSystem *system);
+
+void EmitParticle(ParticleSystem *system, const ParticleProps *props);
+void UpdateParticles(ParticleSystem *system, float deltaTime);
+void DrawParticles(ParticleSystem *system);
+
