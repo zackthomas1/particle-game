@@ -9,10 +9,11 @@
 //     abort(); 
 // }
 
-static const Vector2 INITIAL_VELOCITY   = { 0.0f, -10.0f};
-static const float INITIAL_LIFETIME     = 5.0f;
-static const Color PARTICLE_COLOR       = RED;
-static const float PARTICLE_RADIUS      = 4.0f;
+static const Vector2 INITIAL_VELOCITY       = { 0.0f, -50.0f};
+static const Vector2 INITIAL_ACCELERATION   = { 0.0f, 9.8f};
+static const float INITIAL_LIFETIME         = INFINITY;
+static const Color PARTICLE_COLOR           = RED;
+static const float PARTICLE_RADIUS          = 4.0f;
 
 ParticleFactory* ConstructParticleFactory() 
 {
@@ -41,13 +42,14 @@ void DestructParticleFactory(ParticleFactory* factory)
 
 void SpawnParticle(ParticleFactory* factory) 
 {
+    PASSERT(factory->activeCount < MAX_PARTICLE_COUNT, "active particle count greater than MAX_PARTICLE_COUNT")
     size_t i = factory->activeCount;
 
     factory->pLifetimes[i]      = INITIAL_LIFETIME;
 
     factory->pPositions[i]      = factory->position;
     factory->pVelocities[i]     = INITIAL_VELOCITY;
-    // factory->pAccelations[i] = (Vector2){ 0 };
+    factory->pAccelations[i]    = INITIAL_ACCELERATION;
 
     factory->activeCount += 1;
 }
