@@ -1,13 +1,5 @@
-/*
-Raylib example file.
-This is an example main file for a simple raylib project.
-Use this as a starting point or replace it with your code.
-
-by Jeffery Myers is marked with CC0 1.0. To view a copy of this license, visit https://creativecommons.org/publicdomain/zero/1.0/
-
-*/
-
-#include "raylib.h"
+#include "pch.h"
+#include "particle.h"
 
 // ------------------------
 // Program main entry point
@@ -27,16 +19,14 @@ int main ()
     int currentFPS = 60;
     SetTargetFPS(currentFPS);
 
-    // Define the 3D camera
-    Camera3D camera = { 0 }; 
-    camera.position = (Vector3){ 10.0f, 10.0f, 10.0f };
-    camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };
-    camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
-    camera.fovy = 45.0f;
-    camera.projection = CAMERA_PERSPECTIVE;
+    // Define the 2D camera
+    Camera2D camera = { 0 }; 
+    camera.zoom = 1.0f;
 
-    Vector3 cubePosition = { 0.0f, 0.0f, 0.0f };
-    DisableCursor(); 
+    ParticleFactory* particleFactory  = ConstructParticleFactory();
+    particleFactory->position = (Vector2){ screenWidth / 2.0f, screenHeight / 2.0f };
+
+    const float offset = 10.0f;
 
     // Main game loop
     while (!WindowShouldClose())        // run the loop until the user presses ESCAPE or presses the Close button on the window
@@ -44,12 +34,11 @@ int main ()
         // Update
         // -----------------------
         float deltaTime = GetFrameTime();
-
-        UpdateCamera(&camera, CAMERA_FREE);
         
-        if (IsKeyPressed(KEY_Z)) {
-            camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };
-        }
+        if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) { SpawnParticle(particleFactory); }
+        
+        particleFactory->position = GetMousePosition();
+        UpdateParticles(particleFactory, deltaTime);
 
         // Drawing
         // ------------------------
@@ -57,22 +46,31 @@ int main ()
         {
             ClearBackground(RAYWHITE);
 
-            BeginMode3D(camera);
+            // Draw Scene
+            BeginMode2D(camera);
             {
-                DrawCube(cubePosition, 2.0f, 2.0f, 2.0f, RED);
-                DrawCubeWires(cubePosition, 2.0f, 2.0f, 2.0f, MAROON);
+                // Draw background grid
+                rlPushMatrix();
+                {
+                    rlTranslatef(0, 25*50, 0); 
+                    rlRotatef(90,1,0,0);
+                    DrawGrid(100, 50);
+                }
+                rlPopMatrix();
 
-                DrawGrid(10, 1.0f);
+                //
+                DrawCircleV(particleFactory->position, 4, BLUE);
+
+                DrawParticles(particleFactory);
             }
-            EndMode3D();
+            EndMode2D();
             
-            DrawRectangle(10, 10, 320, 93, Fade(SKYBLUE, 0.5f));
-            DrawRectangleLines(10, 10, 320, 93, BLUE);
-
-            DrawText("Free camera default controls:", 20, 20, 10, BLACK);
-            DrawText("- Mouse Wheel to Zoom in-out", 40, 40, 10, DARKGRAY);
-            DrawText("- Mouse Wheel Pressed to Pan", 40, 60, 10, DARKGRAY);
-            DrawText("- Z to zoom to (0, 0, 0)", 40, 80, 10, DARKGRAY);
+            // Draw UI elements
+            DrawRectangle(5, 10, 320, 93, Fade(SKYBLUE, 0.5f));
+            DrawRectangleLines(5, 10, 320, 93, BLUE);
+            DrawText(TextFormat("FPS: %i ", GetFPS()), 10, 10, 10, DARKGRAY);
+            DrawText(TextFormat("Frame time: %02.02f ms", GetFrameTime()), 10, 20, 10, DARKGRAY);
+            DrawText(TextFormat("Particle count: %i", particleFactory->activeCount), 10, 30, 10, DARKGRAY);
         }
         // end the frame and get ready for the next one  (display frame, poll input, etc...)
         EndDrawing();
@@ -80,6 +78,8 @@ int main ()
     // De-Initialization
     // ------------------------
     // destroy the window and cleanup the OpenGL context
+    DestructParticleFactory(particleFactory);
+    
     CloseWindow();
     return 0;
 }
