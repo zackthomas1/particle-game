@@ -173,6 +173,9 @@ if (downloadRaylib) then
         location "build_files/"
         targetdir "../bin/%{cfg.buildcfg}"
 
+        pchheader = "pch.h"
+        pchsource = "pch.c"
+
         filter {"system:windows", "configurations:Release", "action:gmake*"}
             kind "WindowedApp"
             buildoptions { "-Wl,--subsystem,windows" }
@@ -206,9 +209,9 @@ if (downloadRaylib) then
         includedirs { "../include" }
 
         links {"raylib"}
-
+        
+        language "C"
         cdialect "C17"
-        cppdialect "C++17"
 
         includedirs {raylib_dir .. "/src" }
 
