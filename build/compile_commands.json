@@ -17,6 +17,31 @@
       "-std=c17",
       "-c",
       "-o",
+      "obj/x64/Debug/particle-game/logging.o",
+      "../../src/logging.h"
+    ],
+    "directory": "E:/Dev/particle-game/build/build_files",
+    "file": "E:/Dev/particle-game/src/logging.h",
+    "output": "E:/Dev/particle-game/build/build_files/obj/x64/Debug/particle-game/logging.o"
+  },
+  {
+    "arguments": [
+      "gcc",
+      "-MD",
+      "-MP",
+      "-DDEBUG",
+      "-DPLATFORM_DESKTOP",
+      "-DGRAPHICS_API_OPENGL_33",
+      "-D_WIN32",
+      "-I../../src",
+      "-I../../include",
+      "-I../external/raylib-master/src",
+      "-m64",
+      "-Wshadow",
+      "-g",
+      "-std=c17",
+      "-c",
+      "-o",
       "obj/x64/Debug/particle-game/particle.o",
       "../../src/particle.h"
     ],
@@ -48,6 +73,31 @@
     "directory": "E:/Dev/particle-game/build/build_files",
     "file": "E:/Dev/particle-game/src/pch.h",
     "output": "E:/Dev/particle-game/build/build_files/obj/x64/Debug/particle-game/pch.o"
+  },
+  {
+    "arguments": [
+      "gcc",
+      "-MD",
+      "-MP",
+      "-DDEBUG",
+      "-DPLATFORM_DESKTOP",
+      "-DGRAPHICS_API_OPENGL_33",
+      "-D_WIN32",
+      "-I../../src",
+      "-I../../include",
+      "-I../external/raylib-master/src",
+      "-m64",
+      "-Wshadow",
+      "-g",
+      "-std=c17",
+      "-c",
+      "-o",
+      "obj/x64/Debug/particle-game/pmath.o",
+      "../../src/pmath.h"
+    ],
+    "directory": "E:/Dev/particle-game/build/build_files",
+    "file": "E:/Dev/particle-game/src/pmath.h",
+    "output": "E:/Dev/particle-game/build/build_files/obj/x64/Debug/particle-game/pmath.o"
   },
   {
     "arguments": [
