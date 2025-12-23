@@ -10,6 +10,7 @@ int main ()
     // ------------------------   
     // Tell the window to use vsync and work on high DPI displays
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
+    SetTraceLogLevel(LOG_INFO);
 
     // Create the window and OpenGL context
     const int screenWidth = 800; 
@@ -24,8 +25,6 @@ int main ()
     camera.zoom = 1.0f;
 
     ParticleSystem* particleSystem = ConstructParticleSystem(); 
-
-    const float offset = 10.0f;
 
     // Main game loop
     while (!WindowShouldClose())        // run the loop until the user presses ESCAPE or presses the Close button on the window
@@ -58,7 +57,7 @@ int main ()
                 rlPopMatrix();
 
                 //
-                DrawCircleV(particleSystem->emitter.position, 4, BLUE);
+                DrawCircleV(particleSystem->emitter.position, particleSystem->emitter.radius, BLUE);
 
                 DrawParticles(particleSystem);
             }

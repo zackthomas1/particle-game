@@ -3,15 +3,17 @@
 
 #define MAX_PARTICLE_COUNT 10000
 
+// Particle system data
+// -----------------
 typedef enum { 
     WATER, 
     SAND,
 } ParticleType;
 
-typedef struct ParticleLifetime
+typedef struct ParticleLife
 {
     float lifetime, lifespan;
-}ParticleLifetime;
+}ParticleLife;
 
 typedef struct ParticleSize
 {
@@ -25,7 +27,9 @@ typedef struct ParticleColor
 
 typedef struct ParticleProps
 {
-    ParticleLifetime lifetime;
+    float variance;
+ 
+    float lifetime;
 
     Vector2 position;
     Vector2 velocity;
@@ -37,7 +41,7 @@ typedef struct ParticleProps
 
 typedef struct ParticlePool
 {
-    ParticleLifetime pLifetimes[MAX_PARTICLE_COUNT];
+    ParticleLife pLife[MAX_PARTICLE_COUNT];
 
     Vector2 pPositions[MAX_PARTICLE_COUNT];
     Vector2 pVelocities[MAX_PARTICLE_COUNT];
@@ -66,14 +70,21 @@ typedef struct ParticleSystem
     ParticlePool *pool_;
 }ParticleSystem;
 
+// default property values declaration
+// -----------------
 extern ParticleProps defaultParticleProps;
 
+// Private methods
+// -----------------
 static ParticlePool* ConstructParticlePool_();
 static void DestructParticlePool_(ParticlePool *factory);
 
 static void SwapParticles_(ParticlePool *pool, size_t i, size_t j);
 static void KillParticle_(ParticleSystem *system, size_t index);
 
+
+// Interface methods
+// -----------------
 ParticleSystem* ConstructParticleSystem();
 void DestructParticleSystem(ParticleSystem *system);
 
