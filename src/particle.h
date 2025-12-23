@@ -1,9 +1,10 @@
 #pragma once
 #include "raylib.h"
+#include "stb_ds.h"
 
 #define MAX_PARTICLE_COUNT 10000
-
-// Particle system data
+#define DEFAULT_ARR_SIZE 20
+// Particle data
 // -----------------
 typedef enum { 
     WATER, 
@@ -52,6 +53,30 @@ typedef struct ParticlePool
 
 }ParticlePool;
 
+// Affectors
+// ---------
+typedef enum AffectorType
+{
+    AFFECTOR_DIRECTION,
+    AFFECTOR_POINT,
+}AffectorType;
+
+typedef struct Affector
+{
+    AffectorType type;
+    // uint32_t uid;
+
+    // Directional affector
+    Vector2 direction;
+
+    // Point affector
+    Vector2 position;
+    float strength;
+    float radius;
+}Affector;
+
+// System
+// ----------
 typedef struct ParticleEmitter
 {
     Vector2 position;
@@ -63,10 +88,14 @@ typedef struct ParticleEmitter
     // size_t startIndex, size;
 }ParticleEmitter;
 
+typedef ParticleEmitter ParticleSink;
+
 typedef struct ParticleSystem 
 {
     size_t activeCount;
     ParticleEmitter emitter;
+
+    Affector *affectors_;
     ParticlePool *pool_;
 }ParticleSystem;
 
@@ -82,6 +111,8 @@ static void DestructParticlePool_(ParticlePool *factory);
 static void SwapParticles_(ParticlePool *pool, size_t i, size_t j);
 static void KillParticle_(ParticleSystem *system, size_t index);
 
+static void UpdateParticlesLife_(ParticleSystem *system, float deltaTime);
+static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime);
 
 // Interface methods
 // -----------------
@@ -92,3 +123,6 @@ void EmitParticle(ParticleSystem *system, const ParticleProps *props);
 void UpdateParticles(ParticleSystem *system, float deltaTime);
 void DrawParticles(ParticleSystem *system);
 
+void AddAffector(ParticleSystem *system, const Affector affector);
+void RemoveAffector(ParticleSystem *system);
+void DrawAffectors(ParticleSystem *system);

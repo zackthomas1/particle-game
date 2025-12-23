@@ -1,7 +1,7 @@
 #pragma once
 #include "raylib.h"
 
-#define PASSERT(cond, level, fmsg, ...) if(!(cond)) {TraceLog(level, "Assertion Failed: %s.", fmsg); return; }
+#define PASSERT(cond, level, fmsg, ...) if(!(cond)) {TraceLog(level, "Assertion Failed: %s.", fmsg); }
 
 inline static float GetRandomValueF()
 {

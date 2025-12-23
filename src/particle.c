@@ -2,18 +2,20 @@
 #include "particle.h"
 
 ParticleProps defaultParticleProps = {
-    0.9f,   // varaince
-    10.0f,  // lifetime
+    0.5f,   // varaince
+    100.0f,  // lifetime
     { 0.0f, 0.0f},      // position
-    { 0.0f, -50.0f},    // velocity
-    { 0.0f, 9.8f},      // acceleration
-    { 10.0f, 0.1f}, // size
+    { 0.0f, 0.0f},    // velocity
+    { 0.0f, 0.0f},      // acceleration
+    { 5.0f, 0.1f}, // size
     { (Color){ 230, 41, 55, 255 }, (Color){ 255, 161, 0, 0 } }  // color
 };
 
 static ParticlePool* ConstructParticlePool_() 
 {
     ParticlePool *pool = (ParticlePool*)malloc(sizeof(ParticlePool));
+    PASSERT(pool, LOG_FATAL, "Failed to allocate particle pool");
+    if(!pool) { return NULL; }
 
     for (int i = 0; i < MAX_PARTICLE_COUNT; i++) 
     {
@@ -52,15 +54,69 @@ static void KillParticle_(ParticleSystem *system, size_t index)
     SwapParticles_(system->pool_, index, system->activeCount);
 }
 
+static void UpdateParticlesLife_(ParticleSystem *system, float deltaTime)
+{
+    // Update lifespan of particles and deactivate/kill any particles whose
+    // lifespan has exceeded its lifetime.
+    size_t deadCount = 0;
+    for (size_t i = 0; i < system->activeCount; i++) 
+    {
+        system->pool_->pLife[i].lifespan += deltaTime;
+        if (system->pool_->pLife[i].lifespan > system->pool_->pLife[i].lifetime) 
+        { 
+            deadCount++;
+            SwapParticles_(system->pool_, i, (system->activeCount - deadCount));
+        }
+    }
+    system->activeCount -= deadCount;
+}
+
+static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
+{
+    for (size_t i = 0; i < system->activeCount; i++)
+    {
+        Vector2 sumAccelerationForces = (Vector2){ 0 };
+        for(size_t j = 0; j < arrlenu(system->affectors_); j++){
+            switch (system->affectors_[j].type)
+            {
+            case AFFECTOR_DIRECTION:
+                sumAccelerationForces = Vector2Add(sumAccelerationForces, 
+                    system->affectors_[j].direction);
+                break;
+            case AFFECTOR_POINT:
+                Vector2 affectorParticleDirection = Vector2Normalize(Vector2Subtract(system->affectors_[j].position, 
+                                                     system->pool_->pPositions[i]));
+                float inverserDistanceSquared = 1.0f / Vector2DistanceSqr(system->affectors_[j].position, 
+                                                     system->pool_->pPositions[i]);
+                sumAccelerationForces = Vector2Add(sumAccelerationForces, 
+                                            Vector2Scale(affectorParticleDirection, 
+                                                (1.0f * system->affectors_[j].strength)));
+                break;
+            default:
+                break;
+            }
+            system->pool_->pAccelations[i] = sumAccelerationForces;
+        }
+        system->pool_->pVelocities[i]  = Vector2Add(system->pool_->pVelocities[i], 
+                                            Vector2Scale(system->pool_->pAccelations[i], deltaTime));
+        system->pool_->pPositions[i]   = Vector2Add(system->pool_->pPositions[i], 
+                                            Vector2Scale(system->pool_->pVelocities[i], deltaTime));
+    }
+}
+
 ParticleSystem* ConstructParticleSystem()
 {
     ParticleSystem* system = (ParticleSystem*)malloc(sizeof(ParticleSystem));
-    
+    PASSERT(system, LOG_FATAL, "Failed to allocate particle pool");
+    if(!system) { return NULL; }
+
     system->activeCount = 0;
 
     system->emitter.position    = (Vector2){ 0 };
     system->emitter.radius      = 4.0f;
     
+    system->affectors_ = NULL;
+
     system->pool_ = ConstructParticlePool_();
 
     return system;
@@ -69,6 +125,7 @@ ParticleSystem* ConstructParticleSystem()
 void DestructParticleSystem(ParticleSystem *system)
 {
     DestructParticlePool_(system->pool_);
+    arrfree(system->affectors_);
     free(system);
 }
 
@@ -76,6 +133,7 @@ void EmitParticle(ParticleSystem *system, const ParticleProps *props)
 {
     size_t i = system->activeCount;
     PASSERT(i < MAX_PARTICLE_COUNT, LOG_WARNING, "active particle count exceeds MAX_PARTICLE_COUNT")
+    if(!(i < MAX_PARTICLE_COUNT)) { return; }
 
     system->activeCount += 1;
 
@@ -99,30 +157,10 @@ void EmitParticle(ParticleSystem *system, const ParticleProps *props)
     system->pool_->pColors[i] = props->color;
 }
 
-void UpdateParticles(ParticleSystem *system, float deltaTime) 
+void UpdateParticles(ParticleSystem *system, float deltaTime)
 {
-    // Update lifespan of particles and deactivate/kill any particles whose
-    // lifespan has exceeded its lifetime.
-    size_t deadCount = 0;
-    for (size_t i = 0; i < system->activeCount; i++) 
-    {
-        system->pool_->pLife[i].lifespan += deltaTime;
-        if (system->pool_->pLife[i].lifespan > system->pool_->pLife[i].lifetime) 
-        { 
-            deadCount++;
-            SwapParticles_(system->pool_, i, (system->activeCount - deadCount));
-        }
-    }
-    system->activeCount -= deadCount;
-
-    // Update physics sim
-    for (size_t i = 0; i < system->activeCount; i++)
-    {
-        system->pool_->pVelocities[i]  = Vector2Add(system->pool_->pVelocities[i], 
-                                            Vector2Scale(system->pool_->pAccelations[i], deltaTime));
-        system->pool_->pPositions[i]   = Vector2Add(system->pool_->pPositions[i], 
-                                            Vector2Scale(system->pool_->pVelocities[i], deltaTime));
-    }
+    UpdateParticlesLife_(system, deltaTime);
+    UpdateParticlesMotion_(system, deltaTime);
 }
 
 void DrawParticles(ParticleSystem *system)
@@ -137,5 +175,33 @@ void DrawParticles(ParticleSystem *system)
                                 system->pool_->pColors[i].endColor,
                                 t);
         DrawCircleV(system->pool_->pPositions[i], currentSize, currentColor);
+    }
+}
+
+void AddAffector(ParticleSystem *system, Affector affector)
+{
+    arrput(system->affectors_, affector);
+}
+
+void RemoveAffector(ParticleSystem *system)
+{
+
+}
+
+void DrawAffectors(ParticleSystem *system)
+{
+    for (size_t i = 0; i < arrlenu(system->affectors_); i++)
+    {
+        switch (system->affectors_[i].type)
+        {
+        case AFFECTOR_DIRECTION:
+        DrawCircleV(system->affectors_[i].direction, 4.0f, YELLOW);
+        break;
+        case AFFECTOR_POINT:
+        DrawCircleV(system->affectors_[i].position, 4.0f, YELLOW);
+            break;
+        default:
+            break;
+        }
     }
 }

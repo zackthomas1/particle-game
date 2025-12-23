@@ -21,10 +21,14 @@ int main ()
     SetTargetFPS(currentFPS);
 
     // Define the 2D camera
-    Camera2D camera = { 0 }; 
+    Camera2D camera = { 0 };
     camera.zoom = 1.0f;
 
-    ParticleSystem* particleSystem = ConstructParticleSystem(); 
+    ParticleSystem* particleSystem = ConstructParticleSystem();
+    AddAffector(particleSystem, 
+        (Affector){AFFECTOR_DIRECTION, (Vector2){0.0f, 9.8f}, (Vector2){0.0f, 0.0f}, 0.0f, 0.0f });
+    AddAffector(particleSystem, 
+        (Affector){AFFECTOR_POINT, (Vector2){0.0f, 0.0f}, (Vector2){screenWidth/2, screenHeight/2}, 50.0f, 10.0f });
 
     // Main game loop
     while (!WindowShouldClose())        // run the loop until the user presses ESCAPE or presses the Close button on the window
@@ -60,6 +64,7 @@ int main ()
                 DrawCircleV(particleSystem->emitter.position, particleSystem->emitter.radius, BLUE);
 
                 DrawParticles(particleSystem);
+                DrawAffectors(particleSystem);
             }
             EndMode2D();
             
@@ -75,9 +80,8 @@ int main ()
     }
     // De-Initialization
     // ------------------------
-    // destroy the window and cleanup the OpenGL context
     DestructParticleSystem(particleSystem);
-    
+    // destroy the window and cleanup the OpenGL context
     CloseWindow();
     return 0;
 }

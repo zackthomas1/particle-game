@@ -17,12 +17,12 @@
       "-std=c17",
       "-c",
       "-o",
-      "obj/x64/Debug/particle-game/logging.o",
-      "../../src/logging.h"
+      "obj/x64/Debug/particle-game/auxiliary.o",
+      "../../src/auxiliary.h"
     ],
     "directory": "E:/Dev/particle-game/build/build_files",
-    "file": "E:/Dev/particle-game/src/logging.h",
-    "output": "E:/Dev/particle-game/build/build_files/obj/x64/Debug/particle-game/logging.o"
+    "file": "E:/Dev/particle-game/src/auxiliary.h",
+    "output": "E:/Dev/particle-game/build/build_files/obj/x64/Debug/particle-game/auxiliary.o"
   },
   {
     "arguments": [
@@ -92,12 +92,12 @@
       "-std=c17",
       "-c",
       "-o",
-      "obj/x64/Debug/particle-game/pmath.o",
-      "../../src/pmath.h"
+      "obj/x64/Debug/particle-game/resource_dir.o",
+      "../../include/resource_dir.h"
     ],
     "directory": "E:/Dev/particle-game/build/build_files",
-    "file": "E:/Dev/particle-game/src/pmath.h",
-    "output": "E:/Dev/particle-game/build/build_files/obj/x64/Debug/particle-game/pmath.o"
+    "file": "E:/Dev/particle-game/include/resource_dir.h",
+    "output": "E:/Dev/particle-game/build/build_files/obj/x64/Debug/particle-game/resource_dir.o"
   },
   {
     "arguments": [
@@ -117,12 +117,12 @@
       "-std=c17",
       "-c",
       "-o",
-      "obj/x64/Debug/particle-game/resource_dir.o",
-      "../../include/resource_dir.h"
+      "obj/x64/Debug/particle-game/stb_ds.o",
+      "../../src/stb_ds.h"
     ],
     "directory": "E:/Dev/particle-game/build/build_files",
-    "file": "E:/Dev/particle-game/include/resource_dir.h",
-    "output": "E:/Dev/particle-game/build/build_files/obj/x64/Debug/particle-game/resource_dir.o"
+    "file": "E:/Dev/particle-game/src/stb_ds.h",
+    "output": "E:/Dev/particle-game/build/build_files/obj/x64/Debug/particle-game/stb_ds.o"
   },
   {
     "arguments": [
