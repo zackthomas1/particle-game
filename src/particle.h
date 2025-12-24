@@ -3,7 +3,7 @@
 #include "stb_ds.h"
 
 #define MAX_PARTICLE_COUNT 10240
-#define DEFAULT_ARR_SIZE 20
+
 // Particle data
 // -----------------
 typedef enum { 
@@ -11,46 +11,36 @@ typedef enum {
     SAND,
 } ParticleType;
 
-typedef struct ParticleLife
-{
-    float lifetime, lifespan;
-}ParticleLife;
-
-typedef struct ParticleSize
-{
-    float startSize, endSize;
-}ParticleSize;
-
-typedef struct ParticleColor
-{
-    Color startColor, endColor; 
-}ParticleColor;
-
 typedef struct ParticleProps
 {
     float variance;
- 
-    float lifetime;
+
+    float lifetime, lifespan;
 
     Vector2 position;
     Vector2 velocity;
     Vector2 acceleration;
 
-    ParticleSize size;
-    ParticleColor color;
+    float birthSize, deathSize;
+    Color birthColor, deathColor;
 }ParticleProps;
 
 typedef struct ParticlePool
 {
-    ParticleLife pLife[MAX_PARTICLE_COUNT];
+    float pLifetimes[MAX_PARTICLE_COUNT];
+    float pLifespans[MAX_PARTICLE_COUNT];
 
     Vector2 pPositions[MAX_PARTICLE_COUNT];
     Vector2 pVelocities[MAX_PARTICLE_COUNT];
     Vector2 pAccelations[MAX_PARTICLE_COUNT];
 
-    ParticleSize pSizes[MAX_PARTICLE_COUNT];
-    ParticleColor pColors[MAX_PARTICLE_COUNT];
+    float pBirthSizes[MAX_PARTICLE_COUNT];
+    float pDeathSizes[MAX_PARTICLE_COUNT];
+    float pCurrentSizes[MAX_PARTICLE_COUNT];
 
+    Color pBirthColors[MAX_PARTICLE_COUNT];
+    Color pDeathColors[MAX_PARTICLE_COUNT];
+    Color pCurrentColors[MAX_PARTICLE_COUNT];
 }ParticlePool;
 
 // Affectors
@@ -113,6 +103,7 @@ static void KillParticle_(ParticleSystem *system, size_t index);
 
 static void UpdateParticlesLife_(ParticleSystem *system, float deltaTime);
 static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime);
+static void UpdateParticleAttributes_(ParticleSystem *system);
 
 // Interface methods
 // -----------------

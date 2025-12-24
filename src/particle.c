@@ -2,13 +2,16 @@
 #include "particle.h"
 
 ParticleProps defaultParticleProps = {
-    0.5f,   // varaince
-    100.0f,  // lifetime
-    { 0.0f, 0.0f},      // position
-    { 0.0f, 0.0f},    // velocity
-    { 0.0f, 0.0f},      // acceleration
-    { 2.0f, 0.1f}, // size
-    { (Color){ 230, 41, 55, 255 }, (Color){ 255, 161, 0, 0 } }  // color
+    0.5f,                   // varaince
+    10.0f,                 // lifetime
+    0.0f,                   // lifespan
+    { 0.0f, 0.0f },         // position
+    { 0.0f, 0.0f },         // velocity
+    { 0.0f, 0.0f },         // acceleration
+    6.0f,                   // birthSize
+    0.1f,                   // deathSize
+    { 230, 41, 55, 255 },   // birthColor
+    { 255, 161, 0, 0 },     // deathColor
 };
 
 static ParticlePool* ConstructParticlePool_() 
@@ -19,14 +22,20 @@ static ParticlePool* ConstructParticlePool_()
 
     for (int i = 0; i < MAX_PARTICLE_COUNT; i++) 
     {
-        pool->pLife[i]  = (ParticleLife){ 0 };
+        pool->pLifetimes[i]  = 0.0f;
+        pool->pLifespans[i]  = 0.0f;
 
         pool->pPositions[i]      = (Vector2){ 0 };
         pool->pVelocities[i]     = (Vector2){ 0 };
         pool->pAccelations[i]    = (Vector2){ 0 };
         
-        pool->pSizes[i]  = (ParticleSize){ 0 };
-        pool->pColors[i] = (ParticleColor){ 0 };
+        pool->pBirthSizes[i]    = 0.0f;
+        pool->pDeathSizes[i]    = 0.0f;
+        pool->pCurrentSizes[i]  = 0.0f;
+
+        pool->pBirthColors[i]    = (Color){ 0 };
+        pool->pDeathColors[i]    = (Color){ 0 };
+        pool->pCurrentColors[i]  = (Color){ 0 };
     }
     return pool;
 }
@@ -38,14 +47,20 @@ static void DestructParticlePool_(ParticlePool *pool)
 
 static void SwapParticles_(ParticlePool *pool, size_t i, size_t j)
 {
-    pool->pLife[i]      = pool->pLife[j];
+    pool->pLifetimes[i]      = pool->pLifetimes[j];
+    pool->pLifespans[i]      = pool->pLifespans[j];
 
     pool->pPositions[i]      = pool->pPositions[j];
     pool->pVelocities[i]     = pool->pVelocities[j];
     pool->pAccelations[i]    = pool->pAccelations[j];
 
-    pool->pSizes[i]  = pool->pSizes[j];
-    pool->pColors[i] = pool->pColors[j];
+    pool->pBirthSizes[i]    = pool->pBirthSizes[j];
+    pool->pDeathSizes[i]    = pool->pDeathSizes[j];
+    pool->pCurrentSizes[i]  = pool->pCurrentSizes[j];
+
+    pool->pBirthColors[i]    = pool->pBirthColors[j];
+    pool->pDeathColors[i]    = pool->pDeathColors[j];
+    pool->pCurrentColors[i]  = pool->pCurrentColors[j];
 }
 
 static void KillParticle_(ParticleSystem *system, size_t index) 
@@ -61,8 +76,8 @@ static void UpdateParticlesLife_(ParticleSystem *system, float deltaTime)
     size_t deadCount = 0;
     for (size_t i = 0; i < system->activeCount; i++) 
     {
-        system->pool_->pLife[i].lifespan += deltaTime;
-        if (system->pool_->pLife[i].lifespan > system->pool_->pLife[i].lifetime) 
+        system->pool_->pLifespans[i] += deltaTime;
+        if (system->pool_->pLifespans[i] > system->pool_->pLifetimes[i])
         { 
             deadCount++;
             SwapParticles_(system->pool_, i, (system->activeCount - deadCount));
@@ -103,6 +118,18 @@ static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
                                             Vector2Scale(system->pool_->pVelocities[i], deltaTime));
     }
 }
+static void UpdateParticleAttributes_(ParticleSystem *system)
+{
+    for (size_t i = 0; i < system->activeCount; i++)
+    {
+        float t = (system->pool_->pLifespans[i] / system->pool_->pLifetimes[i]);
+
+        system->pool_->pCurrentSizes[i] = Lerp( system->pool_->pBirthSizes[i],
+                                        system->pool_->pDeathSizes[i], t);
+        system->pool_->pCurrentColors[i]  = ColorLerp( system->pool_->pBirthColors[i],
+                                system->pool_->pDeathColors[i], t);
+    }
+}
 
 ParticleSystem* ConstructParticleSystem()
 {
@@ -141,8 +168,8 @@ void EmitParticle(ParticleSystem *system, const ParticleProps *props)
         LOG_WARNING, "variance value outside valid range [0.0, 1.0]. Clamping value to valid range.")
     float variance = Clamp(props->variance, 0.0f, 1.0f);
 
-    system->pool_->pLife[i].lifetime    = props->lifetime + (props->lifetime * (GetRandomValueF() * variance));
-    system->pool_->pLife[i].lifespan    = 0;
+    system->pool_->pLifetimes[i]    = props->lifetime + (props->lifetime * (GetRandomValueF() * variance));
+    system->pool_->pLifespans[i]    = 0;
 
     system->pool_->pPositions[i]    = Vector2Add(system->emitter.position,
                                         Vector2Scale((Vector2){ GetRandomValueF(), GetRandomValueF() },
@@ -152,30 +179,29 @@ void EmitParticle(ParticleSystem *system, const ParticleProps *props)
     system->pool_->pAccelations[i]  = Vector2Add(props->acceleration,
                                         Vector2Scale(props->acceleration, (GetRandomValueF() * variance)));
 
-    system->pool_->pSizes[i].startSize  = props->size.startSize + (props->size.startSize * (GetRandomValueF() * variance));
-    system->pool_->pSizes[i].endSize  = props->size.endSize;
-    system->pool_->pColors[i] = props->color;
+    system->pool_->pBirthSizes[i]   = props->birthSize + (props->birthSize * (GetRandomValueF() * variance));
+    system->pool_->pDeathSizes[i]   = props->deathSize;
+    system->pool_->pCurrentSizes[i] = system->pool_->pBirthSizes[i];
+
+    system->pool_->pBirthColors[i]   = props->birthColor;
+    system->pool_->pDeathColors[i]   = props->deathColor;
+    system->pool_->pCurrentColors[i] = system->pool_->pBirthColors[i];
 }
 
 void UpdateParticles(ParticleSystem *system, float deltaTime)
 {
     UpdateParticlesLife_(system, deltaTime);
     UpdateParticlesMotion_(system, deltaTime);
+    UpdateParticleAttributes_(system);
 }
 
 void DrawParticles(ParticleSystem *system)
 {
-    for (size_t i = 0; i < system->activeCount; i++){
-        float t = (system->pool_->pLife[i].lifespan / system->pool_->pLife[i].lifetime);
-
-        float currentSize   = Lerp( system->pool_->pSizes[i].startSize, 
-                                system->pool_->pSizes[i].endSize,
-                                t);
-        Color currentColor  = ColorLerp( system->pool_->pColors[i].startColor, 
-                                system->pool_->pColors[i].endColor,
-                                t);
-
-        DrawCircleV(system->pool_->pPositions[i], currentSize, currentColor);
+    for (size_t i = 0; i < system->activeCount; i++)
+    {
+        DrawCircleV(system->pool_->pPositions[i], 
+            system->pool_->pCurrentSizes[i], 
+            system->pool_->pCurrentColors[i]);
     }
 }
 
