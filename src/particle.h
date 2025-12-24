@@ -2,7 +2,7 @@
 #include "raylib.h"
 #include "stb_ds.h"
 
-#define MAX_PARTICLE_COUNT 10000
+#define MAX_PARTICLE_COUNT 10240
 #define DEFAULT_ARR_SIZE 20
 // Particle data
 // -----------------
@@ -99,7 +99,7 @@ typedef struct ParticleSystem
     ParticlePool *pool_;
 }ParticleSystem;
 
-// default property values declaration
+// declare extern variables
 // -----------------
 extern ParticleProps defaultParticleProps;
 

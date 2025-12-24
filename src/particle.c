@@ -7,7 +7,7 @@ ParticleProps defaultParticleProps = {
     { 0.0f, 0.0f},      // position
     { 0.0f, 0.0f},    // velocity
     { 0.0f, 0.0f},      // acceleration
-    { 5.0f, 0.1f}, // size
+    { 2.0f, 0.1f}, // size
     { (Color){ 230, 41, 55, 255 }, (Color){ 255, 161, 0, 0 } }  // color
 };
 
@@ -174,6 +174,7 @@ void DrawParticles(ParticleSystem *system)
         Color currentColor  = ColorLerp( system->pool_->pColors[i].startColor, 
                                 system->pool_->pColors[i].endColor,
                                 t);
+
         DrawCircleV(system->pool_->pPositions[i], currentSize, currentColor);
     }
 }
