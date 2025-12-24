@@ -405,3 +405,6 @@ Makefile
 *.swp
 *.swo
 *.swn
+
+# Generated compile commands
+build/compile_commands.json

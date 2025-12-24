@@ -2,6 +2,7 @@
     "configurations": [
         {
             "name": "Win32",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
             "includePath": [
                 "${workspaceFolder}/build/external/raylib-master/src/**",
                 "${workspaceFolder}/include/**",
@@ -11,7 +12,7 @@
                 "_DEBUG",
                 "UNICODE",
                 "_UNICODE",
-                "GRAPHICS_API_OPENGL_33",
+                "GRAPHICS_API_OPENGL_43",
                 "PLATFORM_DESKTOP"
             ],
             "cStandard": "c17",
@@ -29,7 +30,7 @@
                 "_DEBUG",
                 "UNICODE",
                 "_UNICODE",
-                "GRAPHICS_API_OPENGL_33",
+                "GRAPHICS_API_OPENGL_43",
                 "PLATFORM_DESKTOP"
             ],
             "macFrameworkPath": [
@@ -51,7 +52,7 @@
                 "_DEBUG",
                 "UNICODE",
                 "_UNICODE",
-                "GRAPHICS_API_OPENGL_33",
+                "GRAPHICS_API_OPENGL_43",
                 "PLATFORM_DESKTOP"
             ],
             "compilerPath": "/usr/bin/clang",
