@@ -19,7 +19,7 @@ typedef struct ParticleProps
 
     Vector2 position;
     Vector2 velocity;
-    Vector2 acceleration;
+    float mass;
 
     float birthSize, deathSize;
     Color birthColor, deathColor;
@@ -30,17 +30,17 @@ typedef struct ParticlePool
     float pLifetimes[MAX_PARTICLE_COUNT];
     float pLifespans[MAX_PARTICLE_COUNT];
 
-    Vector2 pPositions[MAX_PARTICLE_COUNT];
-    Vector2 pVelocities[MAX_PARTICLE_COUNT];
-    Vector2 pAccelations[MAX_PARTICLE_COUNT];
+    Vector2 pPositions[MAX_PARTICLE_COUNT];     // aPositions
+    Vector2 pVelocities[MAX_PARTICLE_COUNT];    // aVelocity
+    float pMasses[MAX_PARTICLE_COUNT];
 
     float pBirthSizes[MAX_PARTICLE_COUNT];
     float pDeathSizes[MAX_PARTICLE_COUNT];
-    float pCurrentSizes[MAX_PARTICLE_COUNT];
+    float pCurrentSizes[MAX_PARTICLE_COUNT];    // aSize
 
     Color pBirthColors[MAX_PARTICLE_COUNT];
     Color pDeathColors[MAX_PARTICLE_COUNT];
-    Color pCurrentColors[MAX_PARTICLE_COUNT];
+    Color pCurrentColors[MAX_PARTICLE_COUNT];   // aColor
 }ParticlePool;
 
 // Affectors

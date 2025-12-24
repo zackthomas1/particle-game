@@ -3,11 +3,11 @@
 
 ParticleProps defaultParticleProps = {
     0.5f,                   // varaince
-    10.0f,                 // lifetime
+    10.0f,                  // lifetime
     0.0f,                   // lifespan
     { 0.0f, 0.0f },         // position
     { 0.0f, 0.0f },         // velocity
-    { 0.0f, 0.0f },         // acceleration
+    10.0f,                  // mass
     6.0f,                   // birthSize
     0.1f,                   // deathSize
     { 230, 41, 55, 255 },   // birthColor
@@ -25,9 +25,9 @@ static ParticlePool* ConstructParticlePool_()
         pool->pLifetimes[i]  = 0.0f;
         pool->pLifespans[i]  = 0.0f;
 
-        pool->pPositions[i]      = (Vector2){ 0 };
-        pool->pVelocities[i]     = (Vector2){ 0 };
-        pool->pAccelations[i]    = (Vector2){ 0 };
+        pool->pPositions[i]     = (Vector2){ 0 };
+        pool->pVelocities[i]    = (Vector2){ 0 };
+        pool->pMasses[i]        = 0.0f;
         
         pool->pBirthSizes[i]    = 0.0f;
         pool->pDeathSizes[i]    = 0.0f;
@@ -50,9 +50,9 @@ static void SwapParticles_(ParticlePool *pool, size_t i, size_t j)
     pool->pLifetimes[i]      = pool->pLifetimes[j];
     pool->pLifespans[i]      = pool->pLifespans[j];
 
-    pool->pPositions[i]      = pool->pPositions[j];
-    pool->pVelocities[i]     = pool->pVelocities[j];
-    pool->pAccelations[i]    = pool->pAccelations[j];
+    pool->pPositions[i]     = pool->pPositions[j];
+    pool->pVelocities[i]    = pool->pVelocities[j];
+    pool->pMasses[i]        = pool->pMasses[j];
 
     pool->pBirthSizes[i]    = pool->pBirthSizes[j];
     pool->pDeathSizes[i]    = pool->pDeathSizes[j];
@@ -90,12 +90,12 @@ static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
 {
     for (size_t i = 0; i < system->activeCount; i++)
     {
-        Vector2 sumAccelerationForces = (Vector2){ 0 };
+        Vector2 pAcceleration = (Vector2){ 0 };
         for(size_t j = 0; j < arrlenu(system->affectors_); j++){
             switch (system->affectors_[j].type)
             {
             case AFFECTOR_DIRECTION:
-                sumAccelerationForces = Vector2Add(sumAccelerationForces, 
+                pAcceleration = Vector2Add(pAcceleration, 
                     system->affectors_[j].direction);
                 break;
             case AFFECTOR_POINT:
@@ -103,17 +103,16 @@ static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
                                                      system->pool_->pPositions[i]));
                 float inverserDistanceSquared = 1.0f / Vector2DistanceSqr(system->affectors_[j].position, 
                                                      system->pool_->pPositions[i]);
-                sumAccelerationForces = Vector2Add(sumAccelerationForces, 
-                                            Vector2Scale(affectorParticleDirection, 
-                                                (1.0f * system->affectors_[j].strength)));
+                pAcceleration = Vector2Add(pAcceleration, 
+                                    Vector2Scale(affectorParticleDirection, 
+                                        (1.0f * system->affectors_[j].strength)));
                 break;
             default:
                 break;
             }
-            system->pool_->pAccelations[i] = sumAccelerationForces;
         }
         system->pool_->pVelocities[i]  = Vector2Add(system->pool_->pVelocities[i], 
-                                            Vector2Scale(system->pool_->pAccelations[i], deltaTime));
+                                            Vector2Scale(pAcceleration, deltaTime));
         system->pool_->pPositions[i]   = Vector2Add(system->pool_->pPositions[i], 
                                             Vector2Scale(system->pool_->pVelocities[i], deltaTime));
     }
@@ -166,7 +165,8 @@ void EmitParticle(ParticleSystem *system, const ParticleProps *props)
 
     PASSERT((props->variance > -EPSILON && props->variance < (1.0 + EPSILON)),
         LOG_WARNING, "variance value outside valid range [0.0, 1.0]. Clamping value to valid range.")
-    float variance = Clamp(props->variance, 0.0f, 1.0f);
+    const float variance = Clamp(props->variance, 0.0f, 1.0f);
+    const float randomScalar = GetRandomValueF();
 
     system->pool_->pLifetimes[i]    = props->lifetime + (props->lifetime * (GetRandomValueF() * variance));
     system->pool_->pLifespans[i]    = 0;
@@ -175,11 +175,10 @@ void EmitParticle(ParticleSystem *system, const ParticleProps *props)
                                         Vector2Scale((Vector2){ GetRandomValueF(), GetRandomValueF() },
                                             system->emitter.radius));
     system->pool_->pVelocities[i]   = Vector2Add(props->velocity,
-                                        Vector2Scale(props->velocity, (GetRandomValueF() * variance)));
-    system->pool_->pAccelations[i]  = Vector2Add(props->acceleration,
-                                        Vector2Scale(props->acceleration, (GetRandomValueF() * variance)));
+                                        Vector2Scale(props->velocity, randomScalar * variance));
+    system->pool_->pMasses[i]       = props->mass + (props->mass * (randomScalar * variance));
 
-    system->pool_->pBirthSizes[i]   = props->birthSize + (props->birthSize * (GetRandomValueF() * variance));
+    system->pool_->pBirthSizes[i]   = props->birthSize + (props->birthSize * (randomScalar * variance));
     system->pool_->pDeathSizes[i]   = props->deathSize;
     system->pool_->pCurrentSizes[i] = system->pool_->pBirthSizes[i];
 
