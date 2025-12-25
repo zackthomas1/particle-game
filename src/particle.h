@@ -45,15 +45,16 @@ typedef struct ParticlePool
 
 // Affectors
 // ---------
-typedef enum AffectorType
+typedef enum ForceType
 {
-    AFFECTOR_DIRECTION,
-    AFFECTOR_POINT,
-}AffectorType;
+    FORCE_DIRECTION,
+    FORCE_POINT,
+    FORCE_GRAVITY,
+}ForceType;
 
-typedef struct Affector
+typedef struct Force
 {
-    AffectorType type;
+    ForceType type;
     // uint32_t uid;
 
     // Directional affector
@@ -63,7 +64,7 @@ typedef struct Affector
     Vector2 position;
     float strength;
     float radius;
-}Affector;
+}Force;
 
 // System
 // ----------
@@ -85,7 +86,7 @@ typedef struct ParticleSystem
     size_t activeCount;
     ParticleEmitter emitter;
 
-    Affector *affectors_;
+    Force *forces_;
     ParticlePool *pool_;
 }ParticleSystem;
 
@@ -114,6 +115,13 @@ void EmitParticle(ParticleSystem *system, const ParticleProps *props);
 void UpdateParticles(ParticleSystem *system, float deltaTime);
 void DrawParticles(ParticleSystem *system);
 
-void AddAffector(ParticleSystem *system, const Affector affector);
-void RemoveAffector(ParticleSystem *system);
-void DrawAffectors(ParticleSystem *system);
+static inline void AddForce(ParticleSystem *system, Force force)
+{
+    arrput(system->forces_, force);
+}
+
+static inline void RemoveForce(ParticleSystem *system)
+{
+}
+
+void DrawForces(ParticleSystem *system);

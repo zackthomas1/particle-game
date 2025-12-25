@@ -88,31 +88,39 @@ static void UpdateParticlesLife_(ParticleSystem *system, float deltaTime)
 
 static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
 {
+    // Calculte the updated position and velocity of each particle
     for (size_t i = 0; i < system->activeCount; i++)
     {
-        Vector2 pAcceleration = (Vector2){ 0 };
-        for(size_t j = 0; j < arrlenu(system->affectors_); j++){
-            switch (system->affectors_[j].type)
+        // Calculate the total forces on a single particle
+        Vector2 pForce = (Vector2){ 0 };
+        for(size_t j = 0; j < arrlenu(system->forces_); j++){
+            switch (system->forces_[j].type)
             {
-            case AFFECTOR_DIRECTION:
-                pAcceleration = Vector2Add(pAcceleration, 
-                    system->affectors_[j].direction);
+            case FORCE_DIRECTION:
+                pForce = Vector2Add(pForce, 
+                    system->forces_[j].direction);
                 break;
-            case AFFECTOR_POINT:
-                Vector2 affectorParticleDirection = Vector2Normalize(Vector2Subtract(system->affectors_[j].position, 
+            case FORCE_POINT:
+                Vector2 affectorParticleDirection = Vector2Normalize(Vector2Subtract(system->forces_[j].position, 
                                                      system->pool_->pPositions[i]));
-                float inverserDistanceSquared = 1.0f / Vector2DistanceSqr(system->affectors_[j].position, 
+                float inverserDistanceSquared = 1.0f / Vector2DistanceSqr(system->forces_[j].position, 
                                                      system->pool_->pPositions[i]);
-                pAcceleration = Vector2Add(pAcceleration, 
+                pForce = Vector2Add(pForce, 
                                     Vector2Scale(affectorParticleDirection, 
-                                        (1.0f * system->affectors_[j].strength)));
+                                        (1.0f * system->forces_[j].strength)));
+                break;
+         case FORCE_GRAVITY:
+                pForce = Vector2Add(pForce,
+                    system->forces_[j].direction);
                 break;
             default:
                 break;
             }
         }
+
+        Vector2 pAccelerration = Vector2Scale(pForce, (1.0f / system->pool_->pMasses[i]));
         system->pool_->pVelocities[i]  = Vector2Add(system->pool_->pVelocities[i], 
-                                            Vector2Scale(pAcceleration, deltaTime));
+                                            Vector2Scale(pAccelerration, deltaTime));
         system->pool_->pPositions[i]   = Vector2Add(system->pool_->pPositions[i], 
                                             Vector2Scale(system->pool_->pVelocities[i], deltaTime));
     }
@@ -141,7 +149,7 @@ ParticleSystem* ConstructParticleSystem()
     system->emitter.position    = (Vector2){ 0 };
     system->emitter.radius      = 4.0f;
     
-    system->affectors_ = NULL;
+    system->forces_ = NULL;
 
     system->pool_ = ConstructParticlePool_();
 
@@ -151,7 +159,7 @@ ParticleSystem* ConstructParticleSystem()
 void DestructParticleSystem(ParticleSystem *system)
 {
     DestructParticlePool_(system->pool_);
-    arrfree(system->affectors_);
+    arrfree(system->forces_);
     free(system);
 }
 
@@ -204,27 +212,22 @@ void DrawParticles(ParticleSystem *system)
     }
 }
 
-void AddAffector(ParticleSystem *system, Affector affector)
-{
-    arrput(system->affectors_, affector);
-}
 
-void RemoveAffector(ParticleSystem *system)
-{
 
-}
-
-void DrawAffectors(ParticleSystem *system)
+void DrawForces(ParticleSystem *system)
 {
-    for (size_t i = 0; i < arrlenu(system->affectors_); i++)
+    for (size_t i = 0; i < arrlenu(system->forces_); i++)
     {
-        switch (system->affectors_[i].type)
+        switch (system->forces_[i].type)
         {
-        case AFFECTOR_DIRECTION:
-        DrawCircleV(system->affectors_[i].direction, 4.0f, YELLOW);
+        case FORCE_DIRECTION:
+        DrawCircleV(system->forces_[i].direction, 4.0f, YELLOW);
         break;
-        case AFFECTOR_POINT:
-        DrawCircleV(system->affectors_[i].position, 4.0f, YELLOW);
+        case FORCE_POINT:
+        DrawCircleV(system->forces_[i].position, 4.0f, YELLOW);
+            break;
+        case FORCE_GRAVITY:
+        DrawCircleV(system->forces_[i].position, 4.0f, YELLOW);
             break;
         default:
             break;
