@@ -27,38 +27,35 @@ int main ()
     camera.zoom = 1.0f;
 
     // Initialize particle system
-    ParticleSystem* particleSystem = ConstructParticleSystem();
+    ParticleSystem* particleSystem = ConstructParticleSystem((Boundary){0,screenWidth,0,screenHeight});
     AddForce(particleSystem, 
-        (Force){FORCE_POINT, (Vector2){0.0f, 0.8f}, (Vector2){screenWidth * 0.25f, screenHeight * 0.5f}, 50.0f, 0.0f });
-    AddForce(particleSystem, 
-        (Force){FORCE_POINT, (Vector2){0.0f, 0.0f}, (Vector2){screenWidth * 0.75f, screenHeight * 0.5f}, 50.0f, 10.0f });
-    AddForce(particleSystem, 
-        (Force){FORCE_POINT, (Vector2){0.0f, 0.0f}, (Vector2){screenWidth * 0.5f, screenHeight * 0.25f}, 50.0f, 10.0f });
+        (Force){FORCE_GRAVITY, (Vector2){0.0f, 0.8f}, (Vector2){screenWidth * 0.25f, screenHeight * 0.5f}, 50.0f, 0.0f });
 
-    // Set up vertex data
-    float quadVertices [] = {
-        // positions
-        0.71f,  0.71f,
-        -0.71f,  0.71f,
-        -0.71f, -0.71f,
+
+    // // Set up vertex data
+    // float quadVertices [] = {
+    //     // positions
+    //     0.71f,  0.71f,
+    //     -0.71f,  0.71f,
+    //     -0.71f, -0.71f,
         
-        0.71f, -0.71f,
-        0.71f, -0.71f,
-        0.71f,  0.71f,
-    };
-    uint32_t quadVAO, quadVBO;
-    quadVAO = rlLoadVertexArray();
-    quadVBO = rlLoadVertexBuffer(&quadVertices, sizeof(quadVertices) / sizeof(float), false);
-    rlEnableVertexAttribute(0);
-    rlSetVertexAttribute(0, 2, RL_FLOAT, false, 2 * sizeof(float), 0);
+    //     0.71f, -0.71f,
+    //     0.71f, -0.71f,
+    //     0.71f,  0.71f,
+    // };
+    // uint32_t quadVAO, quadVBO;
+    // quadVAO = rlLoadVertexArray();
+    // quadVBO = rlLoadVertexBuffer(&quadVertices, sizeof(quadVertices) / sizeof(float), false);
+    // rlEnableVertexAttribute(0);
+    // rlSetVertexAttribute(0, 2, RL_FLOAT, false, 2 * sizeof(float), 0);
 
-    uint32_t instancePositionVBO;
-    instancePositionVBO = rlLoadVertexBuffer(&particleSystem->pool_->pPositions, sizeof(particleSystem->pool_->pPositions) / sizeof(Vector2), false);
+    // uint32_t instancePositionVBO;
+    // instancePositionVBO = rlLoadVertexBuffer(&particleSystem->particles_->pPositions, sizeof(particleSystem->particles_->pPositions) / sizeof(Vector2), false);
 
-    // Utility function from resource_dir.h to find the resources folder and set it as the current working directory so we can load from it
-    SearchAndSetResourceDir("resources");
+    // // Utility function from resource_dir.h to find the resources folder and set it as the current working directory so we can load from it
+    // SearchAndSetResourceDir("resources");
 
-    Shader particleShader = LoadShader("shaders/particle.vs", "shaders/particle.fs");
+    // Shader particleShader = LoadShader("shaders/particle.vs", "shaders/particle.fs");
 
     // Main game loop
     while (!WindowShouldClose())        // run the loop until the user presses ESCAPE or presses the Close button on the window
