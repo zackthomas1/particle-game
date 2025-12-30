@@ -1,13 +1,15 @@
 #pragma once
 #include "raylib.h"
-#include "stb_ds.h"
+#include "config.h"
 
-#define MAX_PARTICLE_COUNT 10240
 #define PARTICLE_RADIUS 4.0f
 #define EMITTER_RADIUS 24.0f
 #define GRAVITY_CONST 9.8f
 
-// Particle data
+// Forward declaration
+typedef struct Hash Hash;
+
+// Particles
 // -----------------
 typedef enum { 
     WATER, 
@@ -29,6 +31,8 @@ typedef struct ParticleProps
 
 typedef struct ParticlePool
 {
+    size_t activeCount;
+
     float pLifetimes[MAX_PARTICLE_COUNT];
     float pLifespans[MAX_PARTICLE_COUNT];
 
@@ -44,6 +48,16 @@ typedef struct ParticlePool
     Color pDeathColors[MAX_PARTICLE_COUNT];
     Color pColors[MAX_PARTICLE_COUNT];   // aColor
 }ParticlePool;
+
+// Private methods
+static ParticlePool* ConstructParticlePool_();
+static void DestructParticlePool_(ParticlePool *particles);
+
+static void SwapParticles_(ParticlePool *particles, size_t i, size_t j);
+static void KillParticle_(ParticlePool *particles, size_t index);
+
+// Interface methods
+void DrawParticles(const ParticlePool *particles);
 
 // Forces
 // ---------
@@ -67,6 +81,9 @@ typedef struct Force
     float strength;
     float radius;
 }Force;
+
+// Interface methods
+void DrawForces(const Force *forces);
 
 // Constraints
 // -----------
@@ -109,15 +126,13 @@ typedef struct ParticleEmitter
     // size_t startIndex, size;
 }ParticleEmitter;
 
-typedef struct Boundary
-{
-    uint32_t left, right, top, bottom;
-}Boundary;
-
 typedef struct ParticleSystem 
 {
-    size_t activeCount;
-    Boundary boundaryBox;
+    struct {
+        uint32_t left, right, top, bottom;
+    } boundaryBox;
+    Hash *spatialHash;
+
     ParticleEmitter emitter;
 
     Constraint *constraints_;
@@ -131,39 +146,24 @@ extern ParticleProps defaultParticleProps;
 
 // Private methods
 // -----------------
-static ParticlePool* ConstructParticlePool_();
-static void DestructParticlePool_(ParticlePool *factory);
+static Vector2 CalculateAcceleration_(Vector2 position, float mass, const Force *forces);
+static Vector2 CalculateEntryPoint_(const Vector2 P, const Vector2 v, const Vector2 Q, const Vector2 sn);
 
-static void SwapParticles_(ParticlePool *pool, size_t i, size_t j);
-static void KillParticle_(ParticleSystem *system, size_t index);
-
-static Vector2 CalculateAcceleration_(const ParticlePool *particles, const Force *forces, size_t pi);
-static Vector2 CalculateEntryPoint(const Vector2 P, const Vector2 v, const Vector2 Q, const Vector2 sn);
 static size_t GenerateCollisionConstraints_(ParticleSystem *system);
-
 static void UpdateParticlesLife_(ParticleSystem *system, float deltaTime);
 static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime);
 static void UpdateParticleAttributes_(ParticleSystem *system);
 
 // Interface methods
 // -----------------
-ParticleSystem* ConstructParticleSystem(Boundary bb);
+ParticleSystem* ConstructParticleSystem(uint32_t left, uint32_t right, uint32_t top, uint32_t bottom);
 void DestructParticleSystem(ParticleSystem *system);
 
 void EmitParticle(ParticleSystem *system, const ParticleProps *props);
 void UpdateParticles(ParticleSystem *system, float deltaTime);
-void DrawParticles(ParticleSystem *system);
 
-static inline void AddForce(ParticleSystem *system, Force force)
-{
-    arrput(system->forces_, force);
-}
-
-static inline void RemoveForce(ParticleSystem *system)
-{
-}
-
-void DrawForces(ParticleSystem *system);
+static inline void AddForce(ParticleSystem *system, Force force){ arrput(system->forces_, force); }
+static inline void RemoveForce(ParticlePool *system){ }
 
 void AddSelfCollisionConstraint(ParticleSystem *system, size_t i, size_t j);
 void AddCollisionConstraint(ParticleSystem *system, size_t i, Vector2 sn, Vector2 ep);

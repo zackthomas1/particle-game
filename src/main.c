@@ -27,7 +27,7 @@ int main ()
     camera.zoom = 1.0f;
 
     // Initialize particle system
-    ParticleSystem* particleSystem = ConstructParticleSystem((Boundary){0,screenWidth,0,screenHeight});
+    ParticleSystem* particleSystem = ConstructParticleSystem(0, screenWidth, 0, screenHeight);
     AddForce(particleSystem, 
         (Force){FORCE_GRAVITY, (Vector2){0.0f, 0.8f}, (Vector2){screenWidth * 0.25f, screenHeight * 0.5f}, 50.0f, 0.0f });
 
@@ -96,8 +96,8 @@ int main ()
                 // }
                 // EndShaderMode();
 
-                DrawParticles(particleSystem);
-                DrawForces(particleSystem);
+                DrawParticles(particleSystem->particles_);
+                DrawForces(particleSystem->forces_);
             }
             EndMode2D();
             
@@ -106,7 +106,7 @@ int main ()
             DrawRectangleLines(5, 10, 320, 93, BLUE);
             DrawText(TextFormat("FPS: %i ", GetFPS()), 10, 10, 10, DARKGRAY);
             DrawText(TextFormat("Frame time: %02.02f ms", GetFrameTime()), 10, 20, 10, DARKGRAY);
-            DrawText(TextFormat("Particle count: %i", particleSystem->activeCount), 10, 30, 10, DARKGRAY);
+            DrawText(TextFormat("Particle count: %i", particleSystem->particles_->activeCount), 10, 30, 10, DARKGRAY);
         }
         // end the frame and get ready for the next one  (display frame, poll input, etc...)
         EndDrawing();

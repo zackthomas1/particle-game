@@ -1,1 +1,1 @@
-#define EPSILON 0.001f
+#define MAX_PARTICLE_COUNT 10240

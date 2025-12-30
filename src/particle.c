@@ -1,9 +1,11 @@
 #include "pch.h"
 #include "particle.h"
 
+#include "hash.h"
+
 ParticleProps defaultParticleProps = {
     0.5f,                   // varaince
-    100.0f,                 // lifetime
+    10.0f,                 // lifetime
     { 0.0f, 0.0f },         // position
     { 10.0f, 0.0f },         // velocity
     10.0f,                  // birthMass
@@ -11,6 +13,72 @@ ParticleProps defaultParticleProps = {
     { 230, 41, 55, 255 },   // birthColor
     { 255, 161, 0, 0 },     // deathColor
 };
+
+static ParticlePool* ConstructParticlePool_() 
+{
+    ParticlePool *particles = (ParticlePool*)malloc(sizeof(ParticlePool));
+    PASSERT(particles, LOG_FATAL, "Failed to allocate particle particles");
+    if(!particles) { return NULL; }
+
+    particles->activeCount = 0;
+
+    for (int i = 0; i < MAX_PARTICLE_COUNT; i++) 
+    {
+        particles->pLifetimes[i]  = 0.0f;
+        particles->pLifespans[i]  = 0.0f;
+
+        particles->pPrevPositions[i] = (Vector2){ 0 };
+        particles->pPositions[i]     = (Vector2){ 0 };
+        particles->pVelocities[i]    = (Vector2){ 0 };
+        
+        particles->pBirthMasses[i]    = 0.0f;
+        particles->pDeathMasses[i]    = 0.0f;
+        particles->pMasses[i]  = 0.0f;
+
+        particles->pBirthColors[i]    = (Color){ 0 };
+        particles->pDeathColors[i]    = (Color){ 0 };
+        particles->pColors[i]  = (Color){ 0 };
+    }
+    return particles;
+}
+
+static void DestructParticlePool_(ParticlePool *particles) 
+{
+    free(particles);
+}
+
+static void SwapParticles_(ParticlePool *particles, size_t i, size_t j)
+{
+    particles->pLifetimes[i]      = particles->pLifetimes[j];
+    particles->pLifespans[i]      = particles->pLifespans[j];
+
+    particles->pPrevPositions[i] = particles->pPrevPositions[j];
+    particles->pPositions[i]     = particles->pPositions[j];
+    particles->pVelocities[i]    = particles->pVelocities[j];
+
+    particles->pBirthMasses[i]   = particles->pBirthMasses[j];
+    particles->pDeathMasses[i]   = particles->pDeathMasses[j];
+    particles->pMasses[i]        = particles->pMasses[j];
+
+    particles->pBirthColors[i]   = particles->pBirthColors[j];
+    particles->pDeathColors[i]   = particles->pDeathColors[j];
+    particles->pColors[i]        = particles->pColors[j];
+}
+
+static void KillParticle_(ParticlePool *particles, size_t index) 
+{
+    particles->activeCount--;
+    SwapParticles_(particles, index, particles->activeCount);
+}
+
+void DrawParticles(const ParticlePool *particles)
+{
+    for (size_t i = 0; i < particles->activeCount; i++)
+    {
+        DrawCircleV(particles->pPositions[i], 
+            PARTICLE_RADIUS, particles->pColors[i]);
+    }
+}
 
 void ProjectSelfCollision(const Constraint *this, ParticlePool *particles)
 {
@@ -52,70 +120,17 @@ void ProjectCollision(const Constraint *this, ParticlePool *particles)
 
 void ProjectDistance(const Constraint *this, ParticlePool *particles)
 {
+    PASSERT(false, LOG_WARNING, "ProjectDistance function not implemented");
+
     PASSERT(arrlenu(this->participants) == 2, LOG_ERROR, 
         "Incorrect number of participants in self collision constraint. Constraint participants must equal 2.");
     if (!(arrlen(this->participants) == 2)) { return; }
 }
 
-static ParticlePool* ConstructParticlePool_() 
-{
-    ParticlePool *pool = (ParticlePool*)malloc(sizeof(ParticlePool));
-    PASSERT(pool, LOG_FATAL, "Failed to allocate particle pool");
-    if(!pool) { return NULL; }
-
-    for (int i = 0; i < MAX_PARTICLE_COUNT; i++) 
-    {
-        pool->pLifetimes[i]  = 0.0f;
-        pool->pLifespans[i]  = 0.0f;
-
-        pool->pPrevPositions[i] = (Vector2){ 0 };
-        pool->pPositions[i]     = (Vector2){ 0 };
-        pool->pVelocities[i]    = (Vector2){ 0 };
-        
-        pool->pBirthMasses[i]    = 0.0f;
-        pool->pDeathMasses[i]    = 0.0f;
-        pool->pMasses[i]  = 0.0f;
-
-        pool->pBirthColors[i]    = (Color){ 0 };
-        pool->pDeathColors[i]    = (Color){ 0 };
-        pool->pColors[i]  = (Color){ 0 };
-    }
-    return pool;
-}
-
-static void DestructParticlePool_(ParticlePool *pool) 
-{
-    free(pool);
-}
-
-static void SwapParticles_(ParticlePool *pool, size_t i, size_t j)
-{
-    pool->pLifetimes[i]      = pool->pLifetimes[j];
-    pool->pLifespans[i]      = pool->pLifespans[j];
-
-    pool->pPrevPositions[i] = pool->pPrevPositions[j];
-    pool->pPositions[i]     = pool->pPositions[j];
-    pool->pVelocities[i]    = pool->pVelocities[j];
-
-    pool->pBirthMasses[i]   = pool->pBirthMasses[j];
-    pool->pDeathMasses[i]   = pool->pDeathMasses[j];
-    pool->pMasses[i]        = pool->pMasses[j];
-
-    pool->pBirthColors[i]   = pool->pBirthColors[j];
-    pool->pDeathColors[i]   = pool->pDeathColors[j];
-    pool->pColors[i]        = pool->pColors[j];
-}
-
-static void KillParticle_(ParticleSystem *system, size_t index) 
-{
-    system->activeCount--;
-    SwapParticles_(system->particles_, index, system->activeCount);
-}
-
-static Vector2 CalculateAcceleration_(const ParticlePool *particles, const Force *forces, size_t pi)
+static Vector2 CalculateAcceleration_(Vector2 position, float mass, const Force *forces)
 {
     Vector2 pAcceleration = (Vector2){ 0 };
-    const float invMass = 1.0f / particles->pMasses[pi];
+    const float invMass = 1.0f / mass;
 
     for(size_t j = 0; j < arrlenu(forces); j++){
         switch (forces[j].type)
@@ -125,9 +140,9 @@ static Vector2 CalculateAcceleration_(const ParticlePool *particles, const Force
             break;
         case FORCE_POINT:
             Vector2 forceDirection = Vector2Normalize(Vector2Subtract(forces[j].position, 
-                                                    particles->pPositions[pi]));
+                                                    position));
             // float invDistanceSqr = 1.0f / Vector2DistanceSqr(system->forces_[j].position, 
-            //                                      system->particles_->pPositions[i]);
+            //                                      position);
             pAcceleration = Vector2Add(pAcceleration, 
                                 Vector2Scale(forceDirection, 
                                     (invMass * forces[j].strength)));
@@ -142,7 +157,7 @@ static Vector2 CalculateAcceleration_(const ParticlePool *particles, const Force
     return pAcceleration;
 }
 
-static Vector2 CalculateEntryPoint(const Vector2 P, const Vector2 v, const Vector2 Q, const Vector2 sn)
+static Vector2 CalculateEntryPoint_(const Vector2 P, const Vector2 v, const Vector2 Q, const Vector2 sn)
 {
     // t = ((Q - P) . sn) / (v . sn)
     const float t = Vector2DotProduct(Vector2Subtract(Q, P), sn) / Vector2DotProduct(v, sn);
@@ -156,9 +171,9 @@ static size_t GenerateCollisionConstraints_(ParticleSystem *system)
     
     // Check for particle self collision
     const float minDistance = 2.0f * PARTICLE_RADIUS;
-    for (size_t i = 0; i < system->activeCount; i++)
+    for (size_t i = 0; i < system->particles_->activeCount; i++)
     {
-        for (size_t  j = 0; j < system->activeCount; j++)
+        for (size_t  j = 0; j < system->particles_->activeCount; j++)
         {
             if ( i == j) { continue; }
             if (Vector2Distance(system->particles_->pPositions[i], system->particles_->pPositions[j]) < minDistance)
@@ -170,7 +185,7 @@ static size_t GenerateCollisionConstraints_(ParticleSystem *system)
     }
 
     // check particle-boundary collision
-    for (size_t i = 0; i < system->activeCount; i++)
+    for (size_t i = 0; i < system->particles_->activeCount; i++)
     {
         Vector2 P, v, Q, sn, EP;
         if(system->particles_->pPositions[i].x < system->boundaryBox.left + PARTICLE_RADIUS)
@@ -179,32 +194,36 @@ static size_t GenerateCollisionConstraints_(ParticleSystem *system)
             v = system->particles_->pVelocities[i];
             Q = (Vector2){system->boundaryBox.left + PARTICLE_RADIUS, P.y };
             sn = (Vector2){ 1.0f, 0.0f };
-            EP = CalculateEntryPoint(P, v, Q, sn);
+            EP = CalculateEntryPoint_(P, v, Q, sn);
             AddCollisionConstraint(system, i, sn, EP);
+            collisionCount++;
         }else if(system->particles_->pPositions[i].x > (system->boundaryBox.right - PARTICLE_RADIUS))
         {
             P = system->particles_->pPositions[i];
             v = system->particles_->pVelocities[i];
             Q = (Vector2){system->boundaryBox.right - PARTICLE_RADIUS, P.y };
             sn = (Vector2){ -1.0f, 0.0f };
-            EP = CalculateEntryPoint(P, v, Q, sn);
+            EP = CalculateEntryPoint_(P, v, Q, sn);
             AddCollisionConstraint(system, i, sn, EP);
+            collisionCount++;
         }else if(system->particles_->pPositions[i].y < (system->boundaryBox.top + PARTICLE_RADIUS))
         {
             P = system->particles_->pPositions[i];
             v = system->particles_->pVelocities[i];
             Q = (Vector2){P.x, system->boundaryBox.top + PARTICLE_RADIUS };
             sn = (Vector2){ 0.0f, 1.0f };
-            EP = CalculateEntryPoint(P, v, Q, sn);
+            EP = CalculateEntryPoint_(P, v, Q, sn);
             AddCollisionConstraint(system, i, sn, EP);
+            collisionCount++;
         }else if(system->particles_->pPositions[i].y > system->boundaryBox.bottom - PARTICLE_RADIUS)
         {
             P = system->particles_->pPositions[i];
             v = system->particles_->pVelocities[i];
             Q = (Vector2){P.x, system->boundaryBox.bottom - PARTICLE_RADIUS };
             sn = (Vector2){ 0.0f, -1.0f };
-            EP = CalculateEntryPoint(P, v, Q, sn);
+            EP = CalculateEntryPoint_(P, v, Q, sn);
             AddCollisionConstraint(system, i, sn, EP);
+            collisionCount++;
         }
     }
 
@@ -216,24 +235,26 @@ static void UpdateParticlesLife_(ParticleSystem *system, float deltaTime)
     // Update lifespan of particles and deactivate/kill any particles whose
     // lifespan has exceeded its lifetime.
     size_t deadCount = 0;
-    for (size_t i = 0; i < system->activeCount; i++) 
+    for (size_t i = 0; i < system->particles_->activeCount; i++) 
     {
         system->particles_->pLifespans[i] += deltaTime;
         if (system->particles_->pLifespans[i] > system->particles_->pLifetimes[i])
         { 
             deadCount++;
-            SwapParticles_(system->particles_, i, (system->activeCount - deadCount));
+            SwapParticles_(system->particles_, i, (system->particles_->activeCount - deadCount));
         }
     }
-    system->activeCount -= deadCount;
+    system->particles_->activeCount -= deadCount;
 }
 
 static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
 {
     // Initial particle position estimate
-    for (size_t i = 0; i < system->activeCount; i++)
+    for (size_t i = 0; i < system->particles_->activeCount; i++)
     {
-        Vector2 pAcceleration = CalculateAcceleration_(system->particles_, system->forces_, i);
+        Vector2 pAcceleration = CalculateAcceleration_(system->particles_->pPositions[i], 
+                                    system->particles_->pMasses[i], 
+                                    system->forces_);
 
         system->particles_->pVelocities[i]  = Vector2Add(system->particles_->pVelocities[i], 
                                             Vector2Scale(pAcceleration, deltaTime));
@@ -254,7 +275,7 @@ static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
     for (size_t i = 0; i < collisionCount; i++) { arrpop(system->constraints_); }
     
     // Update velocities after constraint solver
-    for (size_t i = 0; i < system->activeCount; i++)
+    for (size_t i = 0; i < system->particles_->activeCount; i++)
     {
         system->particles_->pVelocities[i] = Vector2Scale(
             Vector2Subtract(system->particles_->pPositions[i], system->particles_->pPrevPositions[i]), 
@@ -263,7 +284,7 @@ static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
 }
 static void UpdateParticleAttributes_(ParticleSystem *system)
 {
-    for (size_t i = 0; i < system->activeCount; i++)
+    for (size_t i = 0; i < system->particles_->activeCount; i++)
     {
         const float t = (system->particles_->pLifespans[i] / system->particles_->pLifetimes[i]);
 
@@ -274,14 +295,17 @@ static void UpdateParticleAttributes_(ParticleSystem *system)
     }
 }
 
-ParticleSystem* ConstructParticleSystem(Boundary bb)
+ParticleSystem* ConstructParticleSystem(uint32_t left, uint32_t right, uint32_t top, uint32_t bottom)
 {
     ParticleSystem* system = (ParticleSystem*)malloc(sizeof(ParticleSystem));
     PASSERT(system, LOG_FATAL, "Failed to allocate particle pool");
     if(!system) { return NULL; }
 
-    system->activeCount = 0;
-    system->boundaryBox = bb;
+    system->boundaryBox.left = left;
+    system->boundaryBox.right = right;
+    system->boundaryBox.top = top;
+    system->boundaryBox.bottom = bottom;
+    system->spatialHash = ConstructHash(2.0f * PARTICLE_RADIUS);
 
     system->emitter.position    = (Vector2){ 0 };
     system->emitter.radius      = EMITTER_RADIUS;
@@ -303,11 +327,11 @@ void DestructParticleSystem(ParticleSystem *system)
 
 void EmitParticle(ParticleSystem *system, const ParticleProps *props) 
 {
-    size_t i = system->activeCount;
+    size_t i = system->particles_->activeCount;
     PASSERT(i < MAX_PARTICLE_COUNT, LOG_WARNING, "active particle count exceeds MAX_PARTICLE_COUNT")
     if(!(i < MAX_PARTICLE_COUNT)) { return; }
 
-    system->activeCount += 1;
+    system->particles_->activeCount += 1;
 
     PASSERT((props->variance > -EPSILON && props->variance < (1.0 + EPSILON)),
         LOG_WARNING, "variance value outside valid range [0.0, 1.0]. Clamping value to valid range.")
@@ -337,6 +361,9 @@ void UpdateParticles(ParticleSystem *system, float deltaTime)
     UpdateParticlesLife_(system, deltaTime);
     UpdateParticleAttributes_(system);
 
+    ClearHash(system->spatialHash);
+    FillHash(system->spatialHash, system->particles_);
+
     const int substeps = 4;
     const float deltaTimeSubstep = deltaTime / (float)substeps;
     for(size_t i = 0; i < substeps; i++)
@@ -345,29 +372,20 @@ void UpdateParticles(ParticleSystem *system, float deltaTime)
     }
 }
 
-void DrawParticles(ParticleSystem *system)
+void DrawForces(const Force *forces)
 {
-    for (size_t i = 0; i < system->activeCount; i++)
+    for (size_t i = 0; i < arrlenu(forces); i++)
     {
-        DrawCircleV(system->particles_->pPositions[i], 
-            PARTICLE_RADIUS, system->particles_->pColors[i]);
-    }
-}
-
-void DrawForces(ParticleSystem *system)
-{
-    for (size_t i = 0; i < arrlenu(system->forces_); i++)
-    {
-        switch (system->forces_[i].type)
+        switch (forces[i].type)
         {
         case FORCE_DIRECTION:
-        DrawCircleV(system->forces_[i].direction, 4.0f, YELLOW);
+        DrawCircleV(forces[i].direction, 4.0f, YELLOW);
         break;
         case FORCE_POINT:
-        DrawCircleV(system->forces_[i].position, 4.0f, YELLOW);
+        DrawCircleV(forces[i].position, 4.0f, YELLOW);
             break;
         case FORCE_GRAVITY:
-        DrawCircleV(system->forces_[i].position, 4.0f, YELLOW);
+        DrawCircleV(forces[i].position, 4.0f, YELLOW);
             break;
         default:
             break;
