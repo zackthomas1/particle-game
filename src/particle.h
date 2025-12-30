@@ -110,7 +110,7 @@ struct Constraint
 };
 
 void ProjectSelfCollision(const Constraint *this, ParticlePool *particles);
-void ProjectCollision(const Constraint *this, ParticlePool *particles);
+void ProjectSurfaceCollision(const Constraint *this, ParticlePool *particles);
 void ProjectDistance(const Constraint *this, ParticlePool *particles);
 
 // System

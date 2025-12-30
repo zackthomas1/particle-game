@@ -105,7 +105,7 @@ void ProjectSelfCollision(const Constraint *this, ParticlePool *particles)
     particles->pPositions[j] = Vector2Add(pj, deltaPj);
 }
 
-void ProjectCollision(const Constraint *this, ParticlePool *particles)
+void ProjectSurfaceCollision(const Constraint *this, ParticlePool *particles)
 {
     PASSERT(arrlenu(this->participants) == 1, LOG_WARNING,
         "Incorrect number of participants in self collision constraint. Constraint participants must equal 1.");
@@ -173,14 +173,14 @@ static size_t GenerateCollisionConstraints_(ParticleSystem *system)
     const float minDistance = 2.0f * PARTICLE_RADIUS;
     for (size_t i = 0; i < system->particles_->activeCount; i++)
     {
-        for (size_t  j = 0; j < system->particles_->activeCount; j++)
+        QueryHash(system->spatialHash, system->particles_, i, 2.0f * PARTICLE_RADIUS);
+        for (size_t j = 0; j < arrlenu(system->spatialHash->queryResults); j++)
         {
-            if ( i == j) { continue; }
-            if (Vector2Distance(system->particles_->pPositions[i], system->particles_->pPositions[j]) < minDistance)
-            {
-                AddSelfCollisionConstraint(system, i, j);
-                collisionCount++;
-            }
+            size_t pj = system->spatialHash->queryResults[j];
+            if ( i == pj) { continue; }
+
+            AddSelfCollisionConstraint(system, i, pj);
+            collisionCount++;
         }
     }
 
@@ -361,13 +361,12 @@ void UpdateParticles(ParticleSystem *system, float deltaTime)
     UpdateParticlesLife_(system, deltaTime);
     UpdateParticleAttributes_(system);
 
-    ClearHash(system->spatialHash);
-    FillHash(system->spatialHash, system->particles_);
-
     const int substeps = 4;
     const float deltaTimeSubstep = deltaTime / (float)substeps;
     for(size_t i = 0; i < substeps; i++)
     {
+        ClearHash(system->spatialHash);
+        FillHash(system->spatialHash, system->particles_);
         UpdateParticlesMotion_(system, deltaTimeSubstep);
     }
 }
@@ -414,7 +413,7 @@ void AddCollisionConstraint(ParticleSystem *system, size_t i, Vector2 sn, Vector
     c.participants = NULL;
     c.type = CONSTRAINT_COLLISION;
     arrput(c.participants, i);
-    c.ProjectFn = ProjectCollision;
+    c.ProjectFn = ProjectSurfaceCollision;
     
     c.surfaceNormal = sn;
     c.entryPoint = ep;
