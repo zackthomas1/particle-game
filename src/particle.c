@@ -5,11 +5,9 @@
 
 ParticleProps defaultParticleProps = {
     0.5f,                   // varaince
-    10.0f,                 // lifetime
-    { 0.0f, 0.0f },         // position
-    { 10.0f, 0.0f },         // velocity
-    10.0f,                  // birthMass
-    0.1f,                   // deathMass
+    100.0f,                  // lifetime
+    { -500.0f, 0.0f },        // velocity
+    10.0f,                  // mass
     { 230, 41, 55, 255 },   // birthColor
     { 255, 161, 0, 0 },     // deathColor
 };
@@ -30,9 +28,7 @@ static ParticlePool* ConstructParticlePool_()
         particles->pPrevPositions[i] = (Vector2){ 0 };
         particles->pPositions[i]     = (Vector2){ 0 };
         particles->pVelocities[i]    = (Vector2){ 0 };
-        
-        particles->pBirthMasses[i]    = 0.0f;
-        particles->pDeathMasses[i]    = 0.0f;
+
         particles->pMasses[i]  = 0.0f;
 
         particles->pBirthColors[i]    = (Color){ 0 };
@@ -56,8 +52,6 @@ static void SwapParticles_(ParticlePool *particles, size_t i, size_t j)
     particles->pPositions[i]     = particles->pPositions[j];
     particles->pVelocities[i]    = particles->pVelocities[j];
 
-    particles->pBirthMasses[i]   = particles->pBirthMasses[j];
-    particles->pDeathMasses[i]   = particles->pDeathMasses[j];
     particles->pMasses[i]        = particles->pMasses[j];
 
     particles->pBirthColors[i]   = particles->pBirthColors[j];
@@ -71,20 +65,11 @@ static void KillParticle_(ParticlePool *particles, size_t index)
     SwapParticles_(particles, index, particles->activeCount);
 }
 
-void DrawParticles(const ParticlePool *particles)
-{
-    for (size_t i = 0; i < particles->activeCount; i++)
-    {
-        DrawCircleV(particles->pPositions[i], 
-            PARTICLE_RADIUS, particles->pColors[i]);
-    }
-}
-
 void ProjectSelfCollision(const Constraint *this, ParticlePool *particles)
 {
-    PASSERT(arrlenu(this->participants) == 2, LOG_WARNING, 
+    PASSERT(this->participantCount == 2, LOG_WARNING, 
         "Incorrect number of participants in self collision constraint. Constraint participants must equal 2.");
-    if (!(arrlen(this->participants) == 2)) { return; }
+    if (!(this->participantCount == 2)) { return; }
 
     const size_t i = this->participants[0], j = this->participants[1];
     const Vector2 pi = particles->pPositions[i], pj = particles->pPositions[j];
@@ -107,9 +92,9 @@ void ProjectSelfCollision(const Constraint *this, ParticlePool *particles)
 
 void ProjectSurfaceCollision(const Constraint *this, ParticlePool *particles)
 {
-    PASSERT(arrlenu(this->participants) == 1, LOG_WARNING,
+    PASSERT(this->participantCount == 1, LOG_WARNING,
         "Incorrect number of participants in self collision constraint. Constraint participants must equal 1.");
-    if (!(arrlen(this->participants) == 1)) { return; }
+    if (!(this->participantCount == 1)) { return; }
 
     const size_t i = this->participants[0];
     const Vector2 pi = particles->pPositions[i];
@@ -122,9 +107,9 @@ void ProjectDistance(const Constraint *this, ParticlePool *particles)
 {
     PASSERT(false, LOG_WARNING, "ProjectDistance function not implemented");
 
-    PASSERT(arrlenu(this->participants) == 2, LOG_ERROR, 
+    PASSERT(this->participantCount == 2, LOG_ERROR, 
         "Incorrect number of participants in self collision constraint. Constraint participants must equal 2.");
-    if (!(arrlen(this->participants) == 2)) { return; }
+    if (!(this->participantCount == 2)) { return; }
 }
 
 static Vector2 CalculateAcceleration_(Vector2 position, float mass, const Force *forces)
@@ -168,62 +153,98 @@ static Vector2 CalculateEntryPoint_(const Vector2 P, const Vector2 v, const Vect
 static size_t GenerateCollisionConstraints_(ParticleSystem *system)
 {
     size_t collisionCount = 0;
-    
+    Vector2 P, v, Q, sn, EP;
+    const float range = 2.0f * PARTICLE_RADIUS;
+
+    // left-wall (vertical)
+    QueryHashRange(system->spatialHash,
+        system->boundaryBox.left - PARTICLE_RADIUS, system->boundaryBox.left + PARTICLE_RADIUS,
+        system->boundaryBox.top, system->boundaryBox.bottom);
+    for (size_t i = 0; i < arrlenu(system->spatialHash->queryResults); i++)
+    {
+        size_t pi = system->spatialHash->queryResults[i];
+        P = system->particles_->pPositions[pi];
+
+        if(!(P.x < system->boundaryBox.left + PARTICLE_RADIUS)) { continue; }
+
+        v = system->particles_->pVelocities[pi];
+        Q = (Vector2){system->boundaryBox.left + PARTICLE_RADIUS, P.y };
+        sn = (Vector2){ 1.0f, 0.0f };
+        EP = CalculateEntryPoint_(P, v, Q, sn);
+        AddSurfaceCollisionConstraint(system, pi, sn, EP);
+        collisionCount++;
+    }
+
+    // right-wall (vertical)
+    QueryHashRange(system->spatialHash, 
+        system->boundaryBox.right - PARTICLE_RADIUS, system->boundaryBox.right + PARTICLE_RADIUS, 
+        system->boundaryBox.top, system->boundaryBox.bottom);
+    for (size_t i = 0; i < arrlenu(system->spatialHash->queryResults); i++)
+    {
+        size_t pi = system->spatialHash->queryResults[i];
+        P = system->particles_->pPositions[pi];
+
+        if(!(P.x > (system->boundaryBox.right - PARTICLE_RADIUS))) { continue; }
+
+        v = system->particles_->pVelocities[pi];
+        Q = (Vector2){system->boundaryBox.right - PARTICLE_RADIUS, P.y };
+        sn = (Vector2){ -1.0f, 0.0f };
+        EP = CalculateEntryPoint_(P, v, Q, sn);
+        AddSurfaceCollisionConstraint(system, pi, sn, EP);
+        collisionCount++;
+    }
+
+    // top-wall (horizontal)
+    QueryHashRange(system->spatialHash, 
+        system->boundaryBox.left, system->boundaryBox.right,
+        system->boundaryBox.top - PARTICLE_RADIUS, system->boundaryBox.top + PARTICLE_RADIUS);
+    for (size_t i = 0; i < arrlenu(system->spatialHash->queryResults); i++)
+    {
+        size_t pi = system->spatialHash->queryResults[i];
+        P = system->particles_->pPositions[pi];
+
+        if(!(P.y < (system->boundaryBox.top + PARTICLE_RADIUS))) { continue; }
+
+        v = system->particles_->pVelocities[pi];
+        Q = (Vector2){P.x, system->boundaryBox.top + PARTICLE_RADIUS };
+        sn = (Vector2){ 0.0f, 1.0f };
+        EP = CalculateEntryPoint_(P, v, Q, sn);
+        AddSurfaceCollisionConstraint(system, pi, sn, EP);
+        collisionCount++;
+    }
+
+    // bottom-wall (horizontal)
+    QueryHashRange(system->spatialHash, 
+        system->boundaryBox.left, system->boundaryBox.right,
+        system->boundaryBox.bottom - PARTICLE_RADIUS, system->boundaryBox.bottom + PARTICLE_RADIUS);
+    for (size_t i = 0; i < arrlenu(system->spatialHash->queryResults); i++)
+    {
+        size_t pi = system->spatialHash->queryResults[i];
+        P = system->particles_->pPositions[pi];
+
+        if(!(P.y > system->boundaryBox.bottom - PARTICLE_RADIUS)) { continue; }
+
+        v = system->particles_->pVelocities[pi];
+        Q = (Vector2){P.x, system->boundaryBox.bottom - PARTICLE_RADIUS };
+        sn = (Vector2){ 0.0f, -1.0f };
+        EP = CalculateEntryPoint_(P, v, Q, sn);
+        AddSurfaceCollisionConstraint(system, pi, sn, EP);
+        collisionCount++;
+    }
+
     // Check for particle self collision
-    const float minDistance = 2.0f * PARTICLE_RADIUS;
     for (size_t i = 0; i < system->particles_->activeCount; i++)
     {
-        QueryHash(system->spatialHash, system->particles_, i, 2.0f * PARTICLE_RADIUS);
+        QueryHashPoint(system->spatialHash, system->particles_->pPositions[i], 2.0f * PARTICLE_RADIUS);
         for (size_t j = 0; j < arrlenu(system->spatialHash->queryResults); j++)
         {
             size_t pj = system->spatialHash->queryResults[j];
             if ( i == pj) { continue; }
-
-            AddSelfCollisionConstraint(system, i, pj);
-            collisionCount++;
-        }
-    }
-
-    // check particle-boundary collision
-    for (size_t i = 0; i < system->particles_->activeCount; i++)
-    {
-        Vector2 P, v, Q, sn, EP;
-        if(system->particles_->pPositions[i].x < system->boundaryBox.left + PARTICLE_RADIUS)
-        {
-            P = system->particles_->pPositions[i];
-            v = system->particles_->pVelocities[i];
-            Q = (Vector2){system->boundaryBox.left + PARTICLE_RADIUS, P.y };
-            sn = (Vector2){ 1.0f, 0.0f };
-            EP = CalculateEntryPoint_(P, v, Q, sn);
-            AddCollisionConstraint(system, i, sn, EP);
-            collisionCount++;
-        }else if(system->particles_->pPositions[i].x > (system->boundaryBox.right - PARTICLE_RADIUS))
-        {
-            P = system->particles_->pPositions[i];
-            v = system->particles_->pVelocities[i];
-            Q = (Vector2){system->boundaryBox.right - PARTICLE_RADIUS, P.y };
-            sn = (Vector2){ -1.0f, 0.0f };
-            EP = CalculateEntryPoint_(P, v, Q, sn);
-            AddCollisionConstraint(system, i, sn, EP);
-            collisionCount++;
-        }else if(system->particles_->pPositions[i].y < (system->boundaryBox.top + PARTICLE_RADIUS))
-        {
-            P = system->particles_->pPositions[i];
-            v = system->particles_->pVelocities[i];
-            Q = (Vector2){P.x, system->boundaryBox.top + PARTICLE_RADIUS };
-            sn = (Vector2){ 0.0f, 1.0f };
-            EP = CalculateEntryPoint_(P, v, Q, sn);
-            AddCollisionConstraint(system, i, sn, EP);
-            collisionCount++;
-        }else if(system->particles_->pPositions[i].y > system->boundaryBox.bottom - PARTICLE_RADIUS)
-        {
-            P = system->particles_->pPositions[i];
-            v = system->particles_->pVelocities[i];
-            Q = (Vector2){P.x, system->boundaryBox.bottom - PARTICLE_RADIUS };
-            sn = (Vector2){ 0.0f, -1.0f };
-            EP = CalculateEntryPoint_(P, v, Q, sn);
-            AddCollisionConstraint(system, i, sn, EP);
-            collisionCount++;
+            if (Vector2Distance(system->particles_->pPositions[i], system->particles_->pPositions[pj]) < range)
+            {
+                AddSelfCollisionConstraint(system, i, pj);
+                collisionCount++;
+            }
         }
     }
 
@@ -263,6 +284,9 @@ static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
                                             Vector2Scale(system->particles_->pVelocities[i], deltaTime));
     }
 
+    ClearHash(system->spatialHash);
+    FillHash(system->spatialHash, system->particles_);
+
     // Generate self collision constraints
     size_t collisionCount = GenerateCollisionConstraints_(system);
 
@@ -272,8 +296,11 @@ static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
         const Constraint c = system->constraints_[i];
         c.ProjectFn(&c, system->particles_);
     }
-    for (size_t i = 0; i < collisionCount; i++) { arrpop(system->constraints_); }
-    
+
+    // Remove collision constraints
+    arrsetlen(system->constraints_, (arrlen(system->constraints_) - collisionCount));
+    PASSERT((arrlen(system->constraints_) >= 0), LOG_ERROR, "");
+
     // Update velocities after constraint solver
     for (size_t i = 0; i < system->particles_->activeCount; i++)
     {
@@ -282,14 +309,13 @@ static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
                 (1.0f / deltaTime));
     }
 }
+
 static void UpdateParticleAttributes_(ParticleSystem *system)
 {
     for (size_t i = 0; i < system->particles_->activeCount; i++)
     {
         const float t = (system->particles_->pLifespans[i] / system->particles_->pLifetimes[i]);
 
-        system->particles_->pMasses[i] = Lerp( system->particles_->pBirthMasses[i],
-                                        system->particles_->pDeathMasses[i], t);
         system->particles_->pColors[i]  = ColorLerp( system->particles_->pBirthColors[i],
                                 system->particles_->pDeathColors[i], t);
     }
@@ -325,7 +351,7 @@ void DestructParticleSystem(ParticleSystem *system)
     free(system);
 }
 
-void EmitParticle(ParticleSystem *system, const ParticleProps *props) 
+void EmitParticle(ParticleSystem *system, const Vector2 position, const ParticleProps *props) 
 {
     size_t i = system->particles_->activeCount;
     PASSERT(i < MAX_PARTICLE_COUNT, LOG_WARNING, "active particle count exceeds MAX_PARTICLE_COUNT")
@@ -341,15 +367,10 @@ void EmitParticle(ParticleSystem *system, const ParticleProps *props)
     system->particles_->pLifetimes[i]    = props->lifetime + (props->lifetime * (GetRandomValueF() * variance));
     system->particles_->pLifespans[i]    = 0;
 
-    system->particles_->pPositions[i]    = Vector2Add(system->emitter.position,
-                                            Vector2Scale((Vector2){ GetRandomValueF(), GetRandomValueF() },
-                                                system->emitter.radius));
+    system->particles_->pPositions[i]    = position;
     system->particles_->pVelocities[i]   = Vector2Add(props->velocity,
                                             Vector2Scale(props->velocity, randomScalar * variance));
-
-    system->particles_->pBirthMasses[i]  = props->birthMass + (props->birthMass * (randomScalar * variance));
-    system->particles_->pDeathMasses[i]  = props->deathMass;
-    system->particles_->pMasses[i]       = system->particles_->pBirthMasses[i];
+    system->particles_->pMasses[i]       = props->mass;
 
     system->particles_->pBirthColors[i]  = props->birthColor;
     system->particles_->pDeathColors[i]  = props->deathColor;
@@ -358,6 +379,9 @@ void EmitParticle(ParticleSystem *system, const ParticleProps *props)
 
 void UpdateParticles(ParticleSystem *system, float deltaTime)
 {
+    PASSERT((deltaTime > EPSILON), LOG_WARNING, "delta equal to zero. Skipping update step");
+    if(!(deltaTime > EPSILON)) { return; }
+
     UpdateParticlesLife_(system, deltaTime);
     UpdateParticleAttributes_(system);
 
@@ -365,26 +389,33 @@ void UpdateParticles(ParticleSystem *system, float deltaTime)
     const float deltaTimeSubstep = deltaTime / (float)substeps;
     for(size_t i = 0; i < substeps; i++)
     {
-        ClearHash(system->spatialHash);
-        FillHash(system->spatialHash, system->particles_);
         UpdateParticlesMotion_(system, deltaTimeSubstep);
     }
 }
 
-void DrawForces(const Force *forces)
+void DrawParticles(const ParticleSystem *system)
 {
-    for (size_t i = 0; i < arrlenu(forces); i++)
+    for (size_t i = 0; i < system->particles_->activeCount; i++)
     {
-        switch (forces[i].type)
+        DrawCircleV(system->particles_->pPositions[i], 
+            PARTICLE_RADIUS, system->particles_->pColors[i]);
+    }
+}
+
+void DrawForces(const ParticleSystem *system)
+{
+    for (size_t i = 0; i < arrlenu(system->forces_); i++)
+    {
+        switch (system->forces_[i].type)
         {
         case FORCE_DIRECTION:
-        DrawCircleV(forces[i].direction, 4.0f, YELLOW);
+        DrawCircleV(system->forces_[i].direction, 4.0f, YELLOW);
         break;
         case FORCE_POINT:
-        DrawCircleV(forces[i].position, 4.0f, YELLOW);
+        DrawCircleV(system->forces_[i].position, 4.0f, YELLOW);
             break;
         case FORCE_GRAVITY:
-        DrawCircleV(forces[i].position, 4.0f, YELLOW);
+        DrawCircleV(system->forces_[i].position, 4.0f, YELLOW);
             break;
         default:
             break;
@@ -394,44 +425,38 @@ void DrawForces(const Force *forces)
 
 void AddSelfCollisionConstraint(ParticleSystem *system, size_t i, size_t j)
 {
-    Constraint c;
-    c.participants = NULL;
+    Constraint c = { 0 };
     c.type = CONSTRAINT_SELF_COLLISION;
-    arrput(c.participants, i);
-    arrput(c.participants, j);
+    c.participants[0] = i;
+    c.participants[1] = j;
+    c.participantCount = 2;
     c.ProjectFn = ProjectSelfCollision;
-
-    c.surfaceNormal = (Vector2){ 0 };
-    c.entryPoint = (Vector2){ 0 };
 
     arrput(system->constraints_, c);
 }
 
-void AddCollisionConstraint(ParticleSystem *system, size_t i, Vector2 sn, Vector2 ep)
+void AddSurfaceCollisionConstraint(ParticleSystem *system, size_t i, Vector2 sn, Vector2 ep)
 {
-    Constraint c;
-    c.participants = NULL;
-    c.type = CONSTRAINT_COLLISION;
-    arrput(c.participants, i);
+    Constraint c = { 0 };
+    c.type = CONSTRAINT_SURFACE_COLLISION;
+    c.participants[0] = i;
+    c.participantCount = 1;
     c.ProjectFn = ProjectSurfaceCollision;
-    
+
     c.surfaceNormal = sn;
     c.entryPoint = ep;
-
+    
     arrput(system->constraints_, c);
 }
 
 void AddDistanceConstraint(ParticleSystem *system, size_t i, size_t j)
 {
-    Constraint c;
-    c.participants = NULL;
+    Constraint c = { 0 };
     c.type = CONSTRAINT_DISTANCE;
-    arrput(c.participants, i);
-    arrput(c.participants, j);
+    c.participants[0] = i;
+    c.participants[1] = j;
+    c.participantCount = 2;
     c.ProjectFn = ProjectDistance;
-    
-    c.surfaceNormal = (Vector2){ 0 };
-    c.entryPoint = (Vector2){ 0 };
 
     arrput(system->constraints_, c);
 }

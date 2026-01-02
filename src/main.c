@@ -27,10 +27,10 @@ int main ()
     camera.zoom = 1.0f;
 
     // Initialize particle system
-    ParticleSystem* particleSystem = ConstructParticleSystem(0, screenWidth, 0, screenHeight);
+    ParticleSystem *particleSystem = ConstructParticleSystem(0, screenWidth, 0, screenHeight);
+    ParticleEmitter *emitter = &particleSystem->emitter;
     AddForce(particleSystem, 
         (Force){FORCE_GRAVITY, (Vector2){0.0f, 0.8f}, (Vector2){screenWidth * 0.25f, screenHeight * 0.5f}, 50.0f, 0.0f });
-
 
     // // Set up vertex data
     // float quadVertices [] = {
@@ -57,6 +57,11 @@ int main ()
 
     // Shader particleShader = LoadShader("shaders/particle.vs", "shaders/particle.fs");
 
+    EmitParticle(particleSystem, (Vector2){ (screenWidth / 2) + (1 * PARTICLE_RADIUS), (screenHeight / 2) }, &defaultParticleProps);
+    EmitParticle(particleSystem, (Vector2){ 1.0f, (screenHeight / 2) }, &defaultParticleProps);
+    EmitParticle(particleSystem, (Vector2){ (screenWidth - 1.0f), (screenHeight / 2) }, &defaultParticleProps);
+    EmitParticle(particleSystem, (Vector2){ (screenWidth / 2), screenHeight - 4.0f }, &defaultParticleProps);
+
     // Main game loop
     while (!WindowShouldClose())        // run the loop until the user presses ESCAPE or presses the Close button on the window
     {
@@ -64,9 +69,14 @@ int main ()
         // -----------------------
         float deltaTime = GetFrameTime();
         
-        if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) { EmitParticle(particleSystem, &defaultParticleProps); }
+        if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) 
+        {
+            Vector2 pos = Vector2Add(emitter->position, 
+                            Vector2Scale((Vector2){ GetRandomValueF(), GetRandomValueF() }, emitter->radius));
+            EmitParticle(particleSystem, pos, &defaultParticleProps);
+        }
         
-        particleSystem->emitter.position = GetMousePosition();
+        emitter->position = GetMousePosition();
         UpdateParticles(particleSystem, deltaTime);
 
         // Drawing
@@ -96,8 +106,8 @@ int main ()
                 // }
                 // EndShaderMode();
 
-                DrawParticles(particleSystem->particles_);
-                DrawForces(particleSystem->forces_);
+                DrawParticles(particleSystem);
+                DrawForces(particleSystem);
             }
             EndMode2D();
             
@@ -107,6 +117,7 @@ int main ()
             DrawText(TextFormat("FPS: %i ", GetFPS()), 10, 10, 10, DARKGRAY);
             DrawText(TextFormat("Frame time: %02.02f ms", GetFrameTime()), 10, 20, 10, DARKGRAY);
             DrawText(TextFormat("Particle count: %i", particleSystem->particles_->activeCount), 10, 30, 10, DARKGRAY);
+            DrawText(TextFormat("Emitter Coords: (%02.02f, %02.02f)", emitter->position.x, emitter->position.y), 10, 40, 10, DARKGRAY);
         }
         // end the frame and get ready for the next one  (display frame, poll input, etc...)
         EndDrawing();

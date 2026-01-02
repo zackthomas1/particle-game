@@ -40,4 +40,5 @@ void DestructHash(Hash *this);
 
 void ClearHash(Hash *this);
 void FillHash(Hash *this, const ParticlePool *particles);
-size_t QueryHash(Hash *this, const ParticlePool *particles, size_t pi, uint32_t range);
+size_t QueryHashPoint(Hash *this, Vector2 position, float range);
+size_t QueryHashRange(Hash *this, float xMin, float xMax, float yMin, float yMax);

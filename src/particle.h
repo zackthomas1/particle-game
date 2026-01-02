@@ -5,6 +5,7 @@
 #define PARTICLE_RADIUS 4.0f
 #define EMITTER_RADIUS 24.0f
 #define GRAVITY_CONST 9.8f
+#define MAX_PARTICIPANTS 6
 
 // Forward declaration
 typedef struct Hash Hash;
@@ -19,12 +20,10 @@ typedef enum {
 typedef struct ParticleProps
 {
     float variance;
-
     float lifetime;
 
-    Vector2 position;
     Vector2 velocity;
-    float birthMass, deathMass;
+    float mass;
 
     Color birthColor, deathColor;
 }ParticleProps;
@@ -39,9 +38,6 @@ typedef struct ParticlePool
     Vector2 pPrevPositions[MAX_PARTICLE_COUNT];
     Vector2 pPositions[MAX_PARTICLE_COUNT];     // aPositions
     Vector2 pVelocities[MAX_PARTICLE_COUNT];    // aVelocity
-
-    float pBirthMasses[MAX_PARTICLE_COUNT];
-    float pDeathMasses[MAX_PARTICLE_COUNT];
     float pMasses[MAX_PARTICLE_COUNT];    // aMass
 
     Color pBirthColors[MAX_PARTICLE_COUNT];
@@ -55,9 +51,6 @@ static void DestructParticlePool_(ParticlePool *particles);
 
 static void SwapParticles_(ParticlePool *particles, size_t i, size_t j);
 static void KillParticle_(ParticlePool *particles, size_t index);
-
-// Interface methods
-void DrawParticles(const ParticlePool *particles);
 
 // Forces
 // ---------
@@ -82,9 +75,6 @@ typedef struct Force
     float radius;
 }Force;
 
-// Interface methods
-void DrawForces(const Force *forces);
-
 // Constraints
 // -----------
 typedef struct Constraint Constraint;
@@ -94,14 +84,15 @@ typedef void (*ProjectConstraintFn)(const Constraint *this, ParticlePool *partic
 typedef enum ConstraintType
 {
     CONSTRAINT_SELF_COLLISION,
-    CONSTRAINT_COLLISION,
+    CONSTRAINT_SURFACE_COLLISION,
     CONSTRAINT_DISTANCE,
 }ConstraintType;
 
 struct Constraint
 {
     ConstraintType type;
-    size_t *participants;
+    size_t participants[MAX_PARTICIPANTS];
+    size_t participantCount;
     ProjectConstraintFn ProjectFn;
 
     // 
@@ -159,12 +150,15 @@ static void UpdateParticleAttributes_(ParticleSystem *system);
 ParticleSystem* ConstructParticleSystem(uint32_t left, uint32_t right, uint32_t top, uint32_t bottom);
 void DestructParticleSystem(ParticleSystem *system);
 
-void EmitParticle(ParticleSystem *system, const ParticleProps *props);
+void EmitParticle(ParticleSystem *system, const Vector2 position, const ParticleProps *props);
 void UpdateParticles(ParticleSystem *system, float deltaTime);
 
 static inline void AddForce(ParticleSystem *system, Force force){ arrput(system->forces_, force); }
 static inline void RemoveForce(ParticlePool *system){ }
 
+void DrawParticles(const ParticleSystem *system);
+void DrawForces(const ParticleSystem *system);
+
 void AddSelfCollisionConstraint(ParticleSystem *system, size_t i, size_t j);
-void AddCollisionConstraint(ParticleSystem *system, size_t i, Vector2 sn, Vector2 ep);
+void AddSurfaceCollisionConstraint(ParticleSystem *system, size_t i, Vector2 sn, Vector2 ep);
 void AddDistanceConstraint(ParticleSystem *system, size_t i, size_t j);
