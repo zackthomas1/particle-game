@@ -45,7 +45,7 @@ void ClearHash(Hash *this)
 
 void FillHash(Hash *this, const ParticlePool *particles)
 {
-    PASSERT(this->isCleared, LOG_WARNING, "Spatial Hash Map not cleared, before filling. ")
+    PASSERT(this->isCleared, LOG_WARNING, "Spatial Hash Map not cleared, before filling. ");
     if(!(this->isCleared)) { ClearHash(this); }
 
     // count the total number of particles in each cell

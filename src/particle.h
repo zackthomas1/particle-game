@@ -4,8 +4,7 @@
 
 #define PARTICLE_RADIUS 4.0f
 #define EMITTER_RADIUS 24.0f
-#define GRAVITY_CONST 9.8f
-#define MAX_PARTICIPANTS 6
+#define MAX_PARTICIPANTS 4
 
 // Forward declaration
 typedef struct Hash Hash;
@@ -56,30 +55,29 @@ static void KillParticle_(ParticlePool *particles, size_t index);
 // ---------
 typedef enum ForceType
 {
-    FORCE_DIRECTION,
-    FORCE_POINT,
     FORCE_GRAVITY,
+    FORCE_VISCOUS,
+    FORCE_ATTRACT,
+    FORCE_REPULSE,
 }ForceType;
 
 typedef struct Force
 {
     ForceType type;
-    // uint32_t uid;
 
-    // Directional affector
-    Vector2 direction;
+    // FORCE_VISCOUS
+    float viscosity; // Dynamic viscosity of the fluid
 
-    // Point affector
+    // FORCE_ATTRACT/FORCE_REPULSE
     Vector2 position;
-    float strength;
-    float radius;
+    float mass;
 }Force;
 
 // Constraints
 // -----------
 typedef struct Constraint Constraint;
 
-typedef void (*ProjectConstraintFn)(const Constraint *this, ParticlePool *particles);
+typedef void (*ProjectConstraintFn)(const Constraint *this, ParticlePool *particles,  float deltaTime);
 
 typedef enum ConstraintType
 {
@@ -98,11 +96,17 @@ struct Constraint
     // 
     Vector2 surfaceNormal;
     Vector2 entryPoint;
+
+    // int nj               // carrdinality
+    // ConstraintFn *Cj     // scalar constraint function
+    // indices              // set of indices
+    // float kj             // stiffness parameter
+    // type                 // unilateral (Cj(xi...xn) = 0) or bilateral (Cj(xi...xn) <= 0)
 };
 
-void ProjectSelfCollision(const Constraint *this, ParticlePool *particles);
-void ProjectSurfaceCollision(const Constraint *this, ParticlePool *particles);
-void ProjectDistance(const Constraint *this, ParticlePool *particles);
+void ProjectSelfCollision(const Constraint *this, ParticlePool *particles, float deltaTime);
+void ProjectSurfaceCollision(const Constraint *this, ParticlePool *particles, float deltaTime);
+void ProjectDistance(const Constraint *this, ParticlePool *particles, float deltaTime);
 
 // System
 // ----------
@@ -137,13 +141,13 @@ extern ParticleProps defaultParticleProps;
 
 // Private methods
 // -----------------
-static Vector2 CalculateAcceleration_(Vector2 position, float mass, const Force *forces);
-static Vector2 CalculateEntryPoint_(const Vector2 P, const Vector2 v, const Vector2 Q, const Vector2 sn);
+static Vector2 CalculateForces_(Vector2 pi, Vector2 vi, float mi, const Force *forces);
+static Vector2 CalculateEntryPoint_(Vector2 position, Vector2 velocity, Vector2 surfacePoint, Vector2 surfaceNormal);
 
 static size_t GenerateCollisionConstraints_(ParticleSystem *system);
 static void UpdateParticlesLife_(ParticleSystem *system, float deltaTime);
-static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime);
 static void UpdateParticleAttributes_(ParticleSystem *system);
+static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime);
 
 // Interface methods
 // -----------------

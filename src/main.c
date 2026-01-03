@@ -30,7 +30,13 @@ int main ()
     ParticleSystem *particleSystem = ConstructParticleSystem(0, screenWidth, 0, screenHeight);
     ParticleEmitter *emitter = &particleSystem->emitter;
     AddForce(particleSystem, 
-        (Force){FORCE_GRAVITY, (Vector2){0.0f, 0.8f}, (Vector2){screenWidth * 0.25f, screenHeight * 0.5f}, 50.0f, 0.0f });
+        (Force){FORCE_GRAVITY, 0.0f, (Vector2){screenWidth * 0.25f, screenHeight * 0.5f}, 50.0f });
+    AddForce(particleSystem, 
+        (Force){FORCE_VISCOUS, AIR_VISCOSITY, (Vector2){screenWidth * 0.25f, screenHeight * 0.5f}, 50.0f });
+    // AddForce(particleSystem, 
+    //     (Force){FORCE_REPULSE, 0.0f, (Vector2){screenWidth * 0.25f, screenHeight * 0.5f}, 5.0e5 });
+    // AddForce(particleSystem, 
+    //     (Force){FORCE_REPULSE, 0.0f, (Vector2){screenWidth * 0.75f, screenHeight * 0.5f}, 5.0e5 });
 
     // // Set up vertex data
     // float quadVertices [] = {
@@ -56,11 +62,6 @@ int main ()
     // SearchAndSetResourceDir("resources");
 
     // Shader particleShader = LoadShader("shaders/particle.vs", "shaders/particle.fs");
-
-    EmitParticle(particleSystem, (Vector2){ (screenWidth / 2) + (1 * PARTICLE_RADIUS), (screenHeight / 2) }, &defaultParticleProps);
-    EmitParticle(particleSystem, (Vector2){ 1.0f, (screenHeight / 2) }, &defaultParticleProps);
-    EmitParticle(particleSystem, (Vector2){ (screenWidth - 1.0f), (screenHeight / 2) }, &defaultParticleProps);
-    EmitParticle(particleSystem, (Vector2){ (screenWidth / 2), screenHeight - 4.0f }, &defaultParticleProps);
 
     // Main game loop
     while (!WindowShouldClose())        // run the loop until the user presses ESCAPE or presses the Close button on the window
