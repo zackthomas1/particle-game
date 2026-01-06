@@ -11,6 +11,9 @@ uniform float uScreenHeight;
 uniform float uRadius;  // Particle radius in pixels
 
 out vec2 texCoord;
+out float colorCyclePhase ;
+
+const int instancesPerColorCycle = 2000;
 
 void main()
 {
@@ -26,5 +29,6 @@ void main()
     ndcPos.y *= -1.0;
 
     texCoord = aTexCoord;
+    colorCyclePhase = float(gl_InstanceID % instancesPerColorCycle ) / instancesPerColorCycle ;
     gl_Position = vec4((scaledCoord + ndcPos), 0.0, 1.0);
 }
