@@ -23,8 +23,6 @@ typedef struct ParticleProps
 
     Vector2 velocity;
     float mass;
-
-    Color birthColor, deathColor;
 }ParticleProps;
 
 typedef struct ParticlePool
@@ -38,10 +36,6 @@ typedef struct ParticlePool
     Vector2 pPositions[MAX_PARTICLE_COUNT];     // aPositions
     Vector2 pVelocities[MAX_PARTICLE_COUNT];    // aVelocity
     float pMasses[MAX_PARTICLE_COUNT];    // aMass
-
-    Color pBirthColors[MAX_PARTICLE_COUNT];
-    Color pDeathColors[MAX_PARTICLE_COUNT];
-    Color pColors[MAX_PARTICLE_COUNT];   // aColor
 }ParticlePool;
 
 // Private methods
@@ -154,7 +148,7 @@ static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime);
 ParticleSystem* ConstructParticleSystem(uint32_t left, uint32_t right, uint32_t top, uint32_t bottom);
 void DestructParticleSystem(ParticleSystem *system);
 
-void EmitParticle(ParticleSystem *system, const Vector2 position, const ParticleProps *props);
+void EmitParticles(ParticleSystem *system, const ParticleProps *props, uint32_t count);
 void UpdateParticles(ParticleSystem *system, float deltaTime);
 
 static inline void AddForce(ParticleSystem *system, Force force){ arrput(system->forces_, force); }

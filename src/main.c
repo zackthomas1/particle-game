@@ -39,10 +39,7 @@ int main ()
     AddForce(particleSystem, 
         (Force){FORCE_ATTRACT, 0.0f, (Vector2){screenWidth * 0.75f, screenHeight * 0.5f}, 5.0e3 });
 
-    // EmitParticle(particleSystem, (Vector2){ (screenWidth / 2) + (1 * PARTICLE_RADIUS), (screenHeight / 2) }, &defaultParticleProps);
-    EmitParticle(particleSystem, (Vector2){ (screenWidth / 2), (screenHeight - 8.0f) }, &defaultParticleProps);
-
-    // Initialize particle rendering pipeline
+     // Initialize particle rendering pipeline
     SearchAndSetResourceDir("resources");
     Shader particleShader = LoadShader("shaders/particle.vs", "shaders/particle.fs");
 
@@ -57,21 +54,7 @@ int main ()
         
         if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) 
         {
-            Vector2 pos = Vector2Add(emitter->position, 
-                            Vector2Scale((Vector2){ GetRandomValueF(), GetRandomValueF() }, emitter->radius));
-            EmitParticle(particleSystem, pos, &defaultParticleProps);
-            pos = Vector2Add(emitter->position, 
-                            Vector2Scale((Vector2){ GetRandomValueF(), GetRandomValueF() }, emitter->radius));
-            EmitParticle(particleSystem, pos, &defaultParticleProps);
-            pos = Vector2Add(emitter->position, 
-                            Vector2Scale((Vector2){ GetRandomValueF(), GetRandomValueF() }, emitter->radius));
-            EmitParticle(particleSystem, pos, &defaultParticleProps);
-            pos = Vector2Add(emitter->position, 
-                            Vector2Scale((Vector2){ GetRandomValueF(), GetRandomValueF() }, emitter->radius));
-            EmitParticle(particleSystem, pos, &defaultParticleProps);
-            pos = Vector2Add(emitter->position, 
-                            Vector2Scale((Vector2){ GetRandomValueF(), GetRandomValueF() }, emitter->radius));
-            EmitParticle(particleSystem, pos, &defaultParticleProps);
+            EmitParticles(particleSystem, &defaultParticleProps, 8);
         }
         
         emitter->position = GetMousePosition();

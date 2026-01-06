@@ -5,11 +5,9 @@
 
 ParticleProps defaultParticleProps = {
     0.5f,                   // varaince
-    100.0f,                  // lifetime
-    { -500.0f, 0.0f },        // velocity
+    100.0f,                 // lifetime
+    { -500.0f, 0.0f },      // velocity
     10.0f,                  // mass
-    { 230, 41, 55, 255 },   // birthColor
-    { 255, 161, 0, 0 },     // deathColor
 };
 
 // Set up vertex data - unit square (±0.5), scaled in shader
@@ -43,10 +41,6 @@ static ParticlePool* ConstructParticlePool_()
         particles->pVelocities[i]    = (Vector2){ 0 };
 
         particles->pMasses[i]  = 0.0f;
-
-        particles->pBirthColors[i]    = (Color){ 0 };
-        particles->pDeathColors[i]    = (Color){ 0 };
-        particles->pColors[i]  = (Color){ 0 };
     }
     return particles;
 }
@@ -66,10 +60,6 @@ static void SwapParticles_(ParticlePool *particles, size_t i, size_t j)
     particles->pVelocities[i]    = particles->pVelocities[j];
 
     particles->pMasses[i]        = particles->pMasses[j];
-
-    particles->pBirthColors[i]   = particles->pBirthColors[j];
-    particles->pDeathColors[i]   = particles->pDeathColors[j];
-    particles->pColors[i]        = particles->pColors[j];
 }
 
 static void KillParticle_(ParticlePool *particles, size_t index) 
@@ -306,9 +296,6 @@ static void UpdateParticleAttributes_(ParticleSystem *system)
     for (size_t i = 0; i < system->particles_->activeCount; i++)
     {
         const float t = (system->particles_->pLifespans[i] / system->particles_->pLifetimes[i]);
-
-        system->particles_->pColors[i]  = ColorLerp( system->particles_->pBirthColors[i],
-             system->particles_->pDeathColors[i], t);
     }
 }
 
@@ -388,29 +375,30 @@ void DestructParticleSystem(ParticleSystem *system)
     free(system);
 }
 
-void EmitParticle(ParticleSystem *system, const Vector2 position, const ParticleProps *props) 
+void EmitParticles(ParticleSystem *system, const ParticleProps *props, uint32_t count)
 {
-    size_t i = system->particles_->activeCount;
-    PASSERTRETURN(i < MAX_PARTICLE_COUNT, LOG_WARNING, "active particle count exceeds MAX_PARTICLE_COUNT");
+    for (size_t c = 0; c < count; c++)
+    {
+        size_t i = system->particles_->activeCount;
+        PASSERTRETURN(i < MAX_PARTICLE_COUNT, LOG_WARNING, "active particle count exceeds MAX_PARTICLE_COUNT");
 
-    system->particles_->activeCount += 1;
+        system->particles_->activeCount += 1;
 
-    PASSERT((props->variance > -EPSILON && props->variance < (1.0 + EPSILON)),
-        LOG_WARNING, "variance value outside valid range [0.0, 1.0]. Clamping value to valid range.");
-    const float variance = Clamp(props->variance, 0.0f, 1.0f);
-    const float randomScalar = GetRandomValueF();
+        PASSERT((props->variance > -EPSILON && props->variance < (1.0 + EPSILON)),
+            LOG_WARNING, "variance value outside valid range [0.0, 1.0]. Clamping value to valid range.");
+        const float variance = Clamp(props->variance, 0.0f, 1.0f);
 
-    system->particles_->pLifetimes[i]    = props->lifetime + (props->lifetime * (GetRandomValueF() * variance));
-    system->particles_->pLifespans[i]    = 0;
+        system->particles_->pLifetimes[i]    = props->lifetime + (props->lifetime * (GetRandomValueF() * variance));
+        system->particles_->pLifespans[i]    = 0;
 
-    system->particles_->pPositions[i]    = position;
-    system->particles_->pVelocities[i]   = Vector2Add(props->velocity,
-                                            Vector2Scale(props->velocity, randomScalar * variance));
-    system->particles_->pMasses[i]       = props->mass;
+        Vector2 pos = Vector2Add(system->emitter.position,
+                Vector2Scale((Vector2){ GetRandomValueF(), GetRandomValueF() }, (system->emitter.radius * variance)));
 
-    system->particles_->pBirthColors[i]  = props->birthColor;
-    system->particles_->pDeathColors[i]  = props->deathColor;
-    system->particles_->pColors[i]       = system->particles_->pBirthColors[i];
+        system->particles_->pPositions[i]    = pos;
+        system->particles_->pVelocities[i]   = Vector2Add(props->velocity,
+                                                Vector2Scale(props->velocity, GetRandomValueF() * variance));
+        system->particles_->pMasses[i]       = props->mass;
+    }
 }
 
 void UpdateParticles(ParticleSystem *system, float deltaTime)
@@ -489,7 +477,7 @@ void DrawParticlesPoints(const ParticleSystem *system)
     for (size_t i = 0; i < system->particles_->activeCount; i++)
     {
         DrawPixelV(system->particles_->pPositions[i],
-        system->particles_->pColors[i]);
+        RED);
     }
 }
 
