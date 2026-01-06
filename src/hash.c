@@ -9,17 +9,21 @@ Hash* ConstructHash(float s)
 
     hash->isCleared = true;
     hash->spacing   = s;
-    hash->tableSize = MAX_PARTICLE_COUNT;
+    hash->tableSize = CELL_COUNT;
 
     for(size_t i = 0; i < hash->tableSize; i++)
     {
-        hash->cellCount[i]  = 0;
-        hash->cellStart[i]  = 0;
-        hash->denseGrid[i]  = 0;
+        hash->cellCount[i] = 0;
+        hash->cellStart[i] = 0;
+    }
+
+    for(size_t i = 0; i < MAX_PARTICLE_COUNT; i++)
+    {
+        hash->denseGrid[i] = 0;
     }
 
     hash->queryResults = NULL;
-    arrsetcap(hash->queryResults, hash->tableSize);
+    arrsetcap(hash->queryResults, MAX_PARTICLE_COUNT);
 
     return hash;
 }
@@ -38,6 +42,10 @@ void ClearHash(Hash *this)
     {
         this->cellCount[i] = 0;
         this->cellStart[i] = 0;
+    }
+
+    for(size_t i = 0; i < MAX_PARTICLE_COUNT; i++)
+    {
         this->denseGrid[i] = 0;
     }
 
@@ -70,7 +78,7 @@ void FillHash(Hash *this, const ParticlePool *particles)
     for(size_t i = 0; i < this->tableSize; i++)
     {
         partialSum += this->cellCount[i];
-        this->cellStart[i] += partialSum;
+        this->cellStart[i] = partialSum;
     }
 
     // Using the previously calculate partial sums to determine the index 
@@ -93,10 +101,10 @@ void FillHash(Hash *this, const ParticlePool *particles)
 
 size_t QueryHashPoint(Hash *this, Vector2 position, float range)
 {
-    int xMin = position.x - range;
-    int yMin = position.y - range;
-    int xMax = position.x + range;
-    int yMax = position.y + range;
+    float xMin = position.x - range;
+    float yMin = position.y - range;
+    float xMax = position.x + range;
+    float yMax = position.y + range;
 
     return QueryHashRange(this, xMin, xMax, yMin, yMax);
 }
