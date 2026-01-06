@@ -5,12 +5,25 @@
 
 ParticleProps defaultParticleProps = {
     0.5f,                   // varaince
-    10.0f,                  // lifetime
+    100.0f,                  // lifetime
     { -500.0f, 0.0f },        // velocity
     10.0f,                  // mass
     { 230, 41, 55, 255 },   // birthColor
     { 255, 161, 0, 0 },     // deathColor
 };
+
+// Set up vertex data - unit square (±0.5), scaled in shader
+static const float quadVertices[] = {
+    // positions    // texCoords
+    -0.5f,  0.5f, 0.0f, 1.0f,
+    -0.5f, -0.5f, 0.0f, 0.0f,
+     0.5f, -0.5f, 1.0f, 0.0f,
+
+    -0.5f,  0.5f, 0.0f, 1.0f,
+     0.5f, -0.5f, 1.0f, 0.0f,
+     0.5f,  0.5f, 1.0f, 1.0f,
+};
+static uint32_t quadVAO, quadVBO, instancePositionVBO, shaderId; //particle render state
 
 static ParticlePool* ConstructParticlePool_() 
 {
@@ -93,13 +106,10 @@ void ProjectSurfaceCollision(const Constraint *this, ParticlePool *particles, fl
 {
     PASSERTRETURN(this->participantCount == 1, LOG_WARNING,
         "Incorrect number of participants in self collision constraint. Constraint participants must equal 1.");
-
     const size_t i = this->participants[0];
     const Vector2 pi = particles->pPositions[i];
-    // const Vector2 vi = ReflectV(particles->pVelocities[i], this->surfaceNormal);
 
     Vector2 deltaPi = Vector2Scale(this->surfaceNormal, -1.0f * Vector2DotProduct(Vector2Subtract(pi, this->entryPoint), this->surfaceNormal));
-    // deltaPi = Vector2Add(deltaPi, Vector2Scale(vi, deltaTime));
     particles->pPositions[i] = Vector2Add(pi, deltaPi);
 }
 
@@ -181,6 +191,9 @@ static size_t GenerateCollisionConstraints_(ParticleSystem *system)
         if(P.x > (Q.x - boundaryBuffer)) { continue; }
 
         EP = CalculateEntryPoint_(P, v, Q, sn);
+
+        if (!(isfinite(EP.x) && isfinite(EP.y))) { continue; }
+
         AddSurfaceCollisionConstraint(system, pi, sn, EP);
         collisionCount++;
     }
@@ -200,6 +213,9 @@ static size_t GenerateCollisionConstraints_(ParticleSystem *system)
         if(P.x < (Q.x + boundaryBuffer)) { continue; }
 
         EP = CalculateEntryPoint_(P, v, Q, sn);
+
+        if (!(isfinite(EP.x) && isfinite(EP.y))) { continue; }
+
         AddSurfaceCollisionConstraint(system, pi, sn, EP);
         collisionCount++;
     }
@@ -219,6 +235,9 @@ static size_t GenerateCollisionConstraints_(ParticleSystem *system)
         if(P.y > (Q.y - boundaryBuffer)) { continue; }
 
         EP = CalculateEntryPoint_(P, v, Q, sn);
+
+        if (!(isfinite(EP.x) && isfinite(EP.y))) { continue; }
+
         AddSurfaceCollisionConstraint(system, pi, sn, EP);
         collisionCount++;
     }
@@ -238,6 +257,9 @@ static size_t GenerateCollisionConstraints_(ParticleSystem *system)
         if(P.y < (Q.y + boundaryBuffer)) { continue; }
 
         EP = CalculateEntryPoint_(P, v, Q, sn);
+
+        if (!(isfinite(EP.x) && isfinite(EP.y))) { continue; }
+
         AddSurfaceCollisionConstraint(system, pi, sn, EP);
         collisionCount++;
     }
@@ -359,6 +381,7 @@ ParticleSystem* ConstructParticleSystem(uint32_t left, uint32_t right, uint32_t 
 
 void DestructParticleSystem(ParticleSystem *system)
 {
+    DestructHash(system->spatialHash);
     arrfree(system->constraints_);
     arrfree(system->forces_);
     DestructParticlePool_(system->particles_);
@@ -405,12 +428,68 @@ void UpdateParticles(ParticleSystem *system, float deltaTime)
     }
 }
 
-void DrawParticles(const ParticleSystem *system)
+void InitParticleRender(const Shader *shader, float screenWidth, float screenHeight)
+{
+    shaderId = shader->id;
+    quadVAO = rlLoadVertexArray();
+    rlEnableVertexArray(quadVAO);
+    quadVBO = rlLoadVertexBuffer(&quadVertices, sizeof(quadVertices), false);
+    // aCoord
+    rlEnableVertexAttribute(0);
+    rlSetVertexAttribute(0, 2, RL_FLOAT, false, 4 * sizeof(float), 0);
+    // aTexCoord
+    rlEnableVertexAttribute(1);
+    rlSetVertexAttribute(1, 2, RL_FLOAT, false, 4 * sizeof(float), 2 * sizeof(float));
+    //  aPosition
+    instancePositionVBO = rlLoadVertexBuffer(NULL, MAX_PARTICLE_COUNT * sizeof(Vector2), true);    // dynamic = true
+    rlEnableVertexAttribute(2);
+    rlSetVertexAttribute(2, 2, RL_FLOAT, false, 2 * sizeof(float), 0);
+    rlSetVertexAttributeDivisor(2,1);
+
+    rlDisableVertexBuffer();
+    rlDisableVertexArray();
+
+    float radius = PARTICLE_RADIUS;
+
+    rlEnableShader(shader->id);
+    rlSetUniform(GetShaderLocation(*shader, "uScreenWidth"), &screenWidth, RL_SHADER_UNIFORM_FLOAT, 1);
+    rlSetUniform(GetShaderLocation(*shader, "uScreenHeight"), &screenHeight, RL_SHADER_UNIFORM_FLOAT, 1);
+    rlSetUniform(GetShaderLocation(*shader, "uRadius"), &radius, RL_SHADER_UNIFORM_FLOAT, 1);
+    rlDisableShader();
+}
+
+void DeleteParticleRender()
+{
+    rlUnloadVertexArray(quadVAO);
+    rlUnloadVertexBuffer(quadVBO);
+    rlUnloadVertexBuffer(instancePositionVBO);
+
+    quadVAO = 0;
+    quadVBO = 0;
+    instancePositionVBO = 0;
+}
+
+void DrawParticlesInstanced(const ParticleSystem *system)
+{
+    rlEnableShader(shaderId);
+    rlEnableVertexArray(quadVAO);
+
+    rlUpdateVertexBuffer(instancePositionVBO, 
+        system->particles_->pPositions,
+        system->particles_->activeCount * sizeof(Vector2),
+        0);
+    rlDrawVertexArrayInstanced(0, 6, system->particles_->activeCount);
+    
+    rlDisableVertexArray();
+    rlDisableShader();
+}
+
+void DrawParticlesPoints(const ParticleSystem *system)
 {
     for (size_t i = 0; i < system->particles_->activeCount; i++)
     {
-        DrawCircleV(system->particles_->pPositions[i], 
-            PARTICLE_RADIUS, system->particles_->pColors[i]);
+        DrawPixelV(system->particles_->pPositions[i],
+        system->particles_->pColors[i]);
     }
 }
 
