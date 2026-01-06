@@ -26,6 +26,7 @@ Hash* ConstructHash(float s)
 
 void DestructHash(Hash *this)
 {
+    arrfree(this->queryResults);
     free(this);
 }
 
