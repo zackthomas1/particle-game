@@ -2,7 +2,7 @@
 #include "particle.h"
 #include "resource_dir.h"	// utility header for SearchAndSetResourceDir
 
-const int screenWidth = 800; 
+const int screenWidth = 800;
 const int screenHeight = 450;
 
 // ------------------------
@@ -33,11 +33,11 @@ int main ()
     // AddForce(particleSystem, 
     //     (Force){FORCE_GRAVITY, 0.0f, (Vector2){screenWidth * 0.25f, screenHeight * 0.5f}, 50.0f });
     AddForce(particleSystem, 
-        (Force){FORCE_VISCOUS, 0.9f, (Vector2){screenWidth * 0.25f, screenHeight * 0.5f}, 50.0f });
+        (Force){FORCE_VISCOUS, AIR_VISCOSITY, (Vector2){screenWidth * 0.25f, screenHeight * 0.5f}, 50.0f });
     AddForce(particleSystem, 
-        (Force){FORCE_REPULSE, 0.0f, (Vector2){screenWidth * 0.25f, screenHeight * 0.5f}, 5.0e4 });
+        (Force){FORCE_REPULSE, 0.0f, (Vector2){screenWidth * 0.25f, screenHeight * 0.75f}, 5.0e4 });
     AddForce(particleSystem, 
-        (Force){FORCE_REPULSE, 0.0f, (Vector2){screenWidth * 0.75f, screenHeight * 0.5f}, 5.0e3 });
+        (Force){FORCE_ATTRACT, 0.0f, (Vector2){screenWidth * 0.75f, screenHeight * 0.5f}, 5.0e3 });
 
      // Initialize particle rendering pipeline
     SearchAndSetResourceDir("resources");
@@ -78,16 +78,16 @@ int main ()
                 }
                 rlPopMatrix();
 
+                // draw emitor at cursor position
+                DrawCircleV(particleSystem->emitter.position, particleSystem->emitter.radius, BLUE);
+                DrawForces(particleSystem);
+
                 BeginShaderMode(particleShader);
                 {
                     DrawParticlesInstanced(particleSystem);
                 }
                 EndShaderMode();
                 // DrawParticlesPoints(particleSystem);
-                
-                // draw emitor at cursor position
-                DrawCircleV(particleSystem->emitter.position, particleSystem->emitter.radius, BLUE);
-                DrawForces(particleSystem);
             }
             EndMode2D();
             
@@ -104,7 +104,7 @@ int main ()
     }
     // De-Initialization
     // ------------------------
-    DeleteParticleRender();
+    ShutdownParticleRender();
     DestructParticleSystem(particleSystem);
     CloseWindow();
     return 0;

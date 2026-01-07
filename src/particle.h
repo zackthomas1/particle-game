@@ -5,6 +5,7 @@
 #define PARTICLE_RADIUS 2.0f
 #define EMITTER_RADIUS 16.0f
 #define MAX_PARTICIPANTS 4
+#define PHYSICS_SUBSTEPS 4
 
 // Forward declaration
 typedef struct Hash Hash;
@@ -118,7 +119,7 @@ typedef struct ParticleEmitter
 typedef struct ParticleSystem 
 {
     struct {
-        uint32_t left, right, top, bottom;
+        uint32_t left, right, bottom, top;
     } boundaryBox;
     Hash *spatialHash;
 
@@ -139,6 +140,8 @@ static Vector2 CalculateForces_(Vector2 pi, Vector2 vi, float mi, const Force *f
 static Vector2 CalculateEntryPoint_(Vector2 position, Vector2 velocity, Vector2 surfacePoint, Vector2 surfaceNormal);
 
 static size_t GenerateCollisionConstraints_(ParticleSystem *system);
+static void HandleBoundaryCollisions_(ParticleSystem *system);
+
 static void UpdateParticlesLife_(ParticleSystem *system, float deltaTime);
 static void UpdateParticleAttributes_(ParticleSystem *system);
 static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime);
@@ -155,7 +158,7 @@ static inline void AddForce(ParticleSystem *system, Force force){ arrput(system-
 static inline void RemoveForce(ParticlePool *system){ }
 
 void InitParticleRender(const Shader *shader, float screenWidth, float screenHeight);
-void DeleteParticleRender();
+void ShutdownParticleRender();
 
 void DrawParticlesInstanced(const ParticleSystem *system);
 void DrawParticlesPoints(const ParticleSystem *system);
