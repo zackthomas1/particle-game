@@ -74,36 +74,22 @@ void ProjectSelfCollision(const Constraint *this, ParticlePool *particles, float
         "Incorrect number of participants in self collision constraint. Constraint participants must equal 2.");
 
     const size_t i = this->participants[0], j = this->participants[1];
-    const Vector2 pi = particles->pPositions[i], pj = particles->pPositions[j];
+    Vector2 pi = particles->pPositions[i], pj = particles->pPositions[j];
 
-    const Vector2 seperation    = Vector2Subtract(pj, pi);
-    float distance              = Vector2Length(seperation);
+    Vector2 seperation  = Vector2Subtract(pj, pi);
+    float distance      = Vector2Length(seperation);
+    Vector2 gradientC   = Vector2Normalize(seperation);
     
-    // Guard against degenerate case where particles are at the same position
-    // Use a random direction to separate them
-    Vector2 gradientC;
-    const float minDistance = 1e-3;
-    if (distance < minDistance)
-    {
-        // Generate a pseudo-random direction based on particle indices
-        float angle = (float)(i * 73856093 ^ j * 19349663) * 0.0001f;
-        gradientC = (Vector2){ cosf(angle), sinf(angle) };
-        distance = minDistance; // Treat as minimum distance for constraint calculation
-    } else
-    {
-        gradientC = Vector2Normalize(seperation);
-    }
-    
-    const float restLength      = 2.0f * PARTICLE_RADIUS;
-    const float constraintEval  = (distance - restLength);
-    const float iInvMass        = 1.0f / particles->pMasses[i], jInvMass = 1.0f / particles->pMasses[j];
+    float restLength      = 2.0f * PARTICLE_RADIUS;
+    float constraintEval  = (distance - restLength);
+    float iInvMass        = 1.0f / particles->pMasses[i], jInvMass = 1.0f / particles->pMasses[j];
     
     float lambda = constraintEval / (iInvMass + jInvMass);
     
     // Clamp maximum displacement to prevent instability
     // Maximum displacement per iteration should not exceed particle radius / substeps
-    const float maxDisplacement = PARTICLE_RADIUS / (float)PHYSICS_SUBSTEPS;
-    const float maxLambda = maxDisplacement / fmaxf(iInvMass, jInvMass);
+    float maxDisplacement = PARTICLE_RADIUS / (float)PHYSICS_SUBSTEPS;
+    float maxLambda = maxDisplacement / fmaxf(iInvMass, jInvMass);
     lambda = Clamp(lambda, -maxLambda, maxLambda);
 
     Vector2 deltaPi = Vector2Scale( gradientC, (lambda * iInvMass));
@@ -193,15 +179,16 @@ static size_t GenerateCollisionConstraints_(ParticleSystem *system)
         QueryHashPoint(system->spatialHash, system->particles_->pPositions[i], 2.0f * PARTICLE_RADIUS);
         for (size_t j = 0; j < arrlenu(system->spatialHash->queryResults); j++)
         {
-            const size_t pj = system->spatialHash->queryResults[j];
+            size_t pj = system->spatialHash->queryResults[j];
             // Only process pair once (i < pj) to avoid duplicate constraints
             if ( i >= pj) { continue; }
             // Skip collision if the other particle is also in grace period
             if (system->particles_->pLifespans[pj] < collisionGracePeriod) { continue; }
             
-            const float dist = Vector2Distance(system->particles_->pPositions[i], system->particles_->pPositions[pj]);
-            // Include degenerate case (dist near 0) - ProjectSelfCollision now handles it
-            if ( dist < range)
+            float dist = Vector2Distance(system->particles_->pPositions[i], system->particles_->pPositions[pj]);
+            // Guard against degenerate case where particles are at the same position
+            float minDistance = 1e-3;
+            if ( minDistance < dist && dist < range)
             {
                 AddSelfCollisionConstraint(system, i, pj);
                 collisionCount++;

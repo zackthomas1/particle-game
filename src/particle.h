@@ -2,8 +2,6 @@
 #include "raylib.h"
 #include "config.h"
 
-#define PARTICLE_RADIUS 2.0f
-#define EMITTER_RADIUS 16.0f
 #define MAX_PARTICIPANTS 4
 #define PHYSICS_SUBSTEPS 4
 
@@ -155,7 +153,7 @@ void EmitParticles(ParticleSystem *system, const ParticleProps *props, uint32_t 
 void UpdateParticles(ParticleSystem *system, float deltaTime);
 
 static inline void AddForce(ParticleSystem *system, Force force){ arrput(system->forces_, force); }
-static inline void RemoveForce(ParticlePool *system){ }
+// static inline void RemoveForce(ParticlePool *system){ }
 
 void InitParticleRender(const Shader *shader, float screenWidth, float screenHeight);
 void ShutdownParticleRender();

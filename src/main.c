@@ -37,7 +37,9 @@ int main ()
     AddForce(particleSystem, 
         (Force){FORCE_REPULSE, 0.0f, (Vector2){screenWidth * 0.25f, screenHeight * 0.75f}, 5.0e4 });
     AddForce(particleSystem, 
-        (Force){FORCE_ATTRACT, 0.0f, (Vector2){screenWidth * 0.75f, screenHeight * 0.5f}, 5.0e3 });
+        (Force){FORCE_REPULSE, 0.0f, (Vector2){screenWidth * 0.25f, screenHeight * 0.25f}, 5.0e4 });
+    AddForce(particleSystem, 
+        (Force){FORCE_REPULSE, 0.0f, (Vector2){screenWidth * 0.75f, screenHeight * 0.5f}, 5.0e4 });
 
      // Initialize particle rendering pipeline
     SearchAndSetResourceDir("resources");
