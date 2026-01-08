@@ -33,15 +33,17 @@ static ParticlePool* ConstructParticlePool_()
 
     for (int i = 0; i < MAX_PARTICLE_COUNT; i++) 
     {
+        particles->pActicve[i] = false;
+
         particles->pLifetimes[i] = 0.0f;
         particles->pLifespans[i] = 0.0f;
 
         particles->pForces[i]        = (Vector2){ 0 };
-        particles->pPrevPositions[i] = (Vector2){ 0 };
-        particles->pPositions[i]     = (Vector2){ 0 };
+        particles->pPrevPositions[i] = (Vector2){ i % 800, i / 800};
+        particles->pPositions[i]     = (Vector2){ i % 800, i / 800 };
         particles->pVelocities[i]    = (Vector2){ 0 };
 
-        particles->pMasses[i] = 0.0f;
+        particles->pMasses[i] = 10.0f;
     }
     return particles;
 }
@@ -249,10 +251,7 @@ static void UpdateParticlesLife_(ParticleSystem *system, float deltaTime)
 
 static void UpdateParticleAttributes_(ParticleSystem *system)
 {
-    for (size_t i = 0; i < system->particles_->activeCount; i++)
-    {
-        const float t = (system->particles_->pLifespans[i] / system->particles_->pLifetimes[i]);
-    }
+    return;
 }
 
 static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
@@ -369,7 +368,7 @@ void UpdateParticles(ParticleSystem *system, float deltaTime)
     PASSERTRETURN((deltaTime > EPSILON), LOG_WARNING, "delta equal to zero. Skipping update step");
 
     UpdateParticlesLife_(system, deltaTime);
-    UpdateParticleAttributes_(system);
+    // UpdateParticleAttributes_(system);
 
     const int substeps = PHYSICS_SUBSTEPS;
     const float deltaTimeSubstep = deltaTime / (float)substeps;
@@ -391,11 +390,11 @@ void InitParticleRender(const Shader *shader, float screenWidth, float screenHei
     // aTexCoord
     rlEnableVertexAttribute(1);
     rlSetVertexAttribute(1, 2, RL_FLOAT, false, 4 * sizeof(float), 2 * sizeof(float));
-    //  aPosition
-    instancePositionVBO = rlLoadVertexBuffer(NULL, MAX_PARTICLE_COUNT * sizeof(Vector2), true);    // dynamic = true
-    rlEnableVertexAttribute(2);
-    rlSetVertexAttribute(2, 2, RL_FLOAT, false, 2 * sizeof(float), 0);
-    rlSetVertexAttributeDivisor(2,1);
+    // //  aPosition
+    // instancePositionVBO = rlLoadVertexBuffer(NULL, MAX_PARTICLE_COUNT * sizeof(Vector2), true);    // dynamic = true
+    // rlEnableVertexAttribute(2);
+    // rlSetVertexAttribute(2, 2, RL_FLOAT, false, 2 * sizeof(float), 0);
+    // rlSetVertexAttributeDivisor(2,1);
 
     rlDisableVertexBuffer();
     rlDisableVertexArray();
@@ -425,10 +424,10 @@ void DrawParticlesInstanced(const ParticleSystem *system)
     rlEnableShader(shaderId);
     rlEnableVertexArray(quadVAO);
 
-    rlUpdateVertexBuffer(instancePositionVBO, 
-        system->particles_->pPositions,
-        system->particles_->activeCount * sizeof(Vector2),
-        0);
+    // rlUpdateVertexBuffer(instancePositionVBO, 
+    //     system->particles_->pPositions,
+    //     system->particles_->activeCount * sizeof(Vector2),
+    //     0);
     rlDrawVertexArrayInstanced(0, 6, system->particles_->activeCount);
     
     rlDisableVertexArray();

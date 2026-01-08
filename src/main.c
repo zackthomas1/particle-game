@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "particle.h"
 #include "resource_dir.h"	// utility header for SearchAndSetResourceDir
+#include "external/glad.h"  // Required for glMemoryBarrier
 
 const int screenWidth = 800;
 const int screenHeight = 450;
@@ -32,8 +33,8 @@ int main ()
     ParticleEmitter *emitter = &particleSystem->emitter;
     // AddForce(particleSystem, 
     //     (Force){FORCE_GRAVITY, 0.0f, (Vector2){screenWidth * 0.25f, screenHeight * 0.5f}, 50.0f });
-    AddForce(particleSystem, 
-        (Force){FORCE_VISCOUS, AIR_VISCOSITY, (Vector2){screenWidth * 0.25f, screenHeight * 0.5f}, 50.0f });
+    // AddForce(particleSystem, 
+    //     (Force){FORCE_VISCOUS, AIR_VISCOSITY, (Vector2){screenWidth * 0.25f, screenHeight * 0.5f}, 50.0f });
     AddForce(particleSystem, 
         (Force){FORCE_REPULSE, 0.0f, (Vector2){screenWidth * 0.25f, screenHeight * 0.75f}, 5.0e4 });
     AddForce(particleSystem, 
@@ -46,6 +47,25 @@ int main ()
     Shader particleShader = LoadShader("shaders/particle.vs", "shaders/particle.fs");
 
     InitParticleRender(&particleShader, (float)screenWidth, (float)screenHeight);
+
+    // Physics Computer Shader initialization
+    char *physicsComputeCode = LoadFileText("shaders/physics-compute.glsl");
+    uint32_t physicsComputeData = rlCompileShader(physicsComputeCode, RL_COMPUTE_SHADER);
+    uint32_t physicsComputeShader = rlLoadComputeShaderProgram(physicsComputeData);
+    UnloadFileText(physicsComputeCode);
+
+    uint32_t prevPositionsSSBO  = rlLoadShaderBuffer(sizeof(particleSystem->particles_->pPrevPositions), particleSystem->particles_->pPrevPositions, RL_DYNAMIC_COPY);
+    uint32_t positionsSSBO  = rlLoadShaderBuffer(sizeof(particleSystem->particles_->pPositions), particleSystem->particles_->pPositions, RL_DYNAMIC_COPY);
+    uint32_t velocitiesSSBO = rlLoadShaderBuffer(sizeof(particleSystem->particles_->pVelocities), particleSystem->particles_->pVelocities, RL_DYNAMIC_COPY);
+    uint32_t massesSSBO     = rlLoadShaderBuffer(sizeof(particleSystem->particles_->pMasses), particleSystem->particles_->pMasses, RL_DYNAMIC_COPY);
+    
+    rlBindShaderBuffer(prevPositionsSSBO, 0);
+    rlBindShaderBuffer(positionsSSBO, 1);
+    rlBindShaderBuffer(velocitiesSSBO, 2);
+    rlBindShaderBuffer(massesSSBO, 3);
+
+    uint32_t local_size_x = 16, local_size_y = local_size_x, local_size_z = 1;
+    uint32_t work_groups_x = (uint32_t)sqrt(MAX_PARTICLE_COUNT / (local_size_x*local_size_y)), work_groups_y = work_groups_x, work_groups_z = 1;
 
     // Main game loop
     while (!WindowShouldClose())        // run the loop until the user presses ESCAPE or presses the Close button on the window
@@ -60,7 +80,12 @@ int main ()
         }
         
         emitter->position = GetMousePosition();
-        UpdateParticles(particleSystem, deltaTime);
+        // UpdateParticles(particleSystem, deltaTime);
+        rlEnableShader(physicsComputeShader);
+        rlSetUniform(rlGetLocationUniform(physicsComputeShader, "uDeltaTime"), &deltaTime, SHADER_UNIFORM_FLOAT, 1);
+        rlComputeShaderDispatch(work_groups_x, work_groups_y, work_groups_z);
+        rlDisableShader();
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
         // Drawing
         // ------------------------
@@ -86,6 +111,7 @@ int main ()
 
                 BeginShaderMode(particleShader);
                 {
+                    // rlUpdateShaderBuffer(positionsSSBO, &particleSystem->particles_->pPositions, sizeof(particleSystem->particles_->pPositions), 0);
                     DrawParticlesInstanced(particleSystem);
                 }
                 EndShaderMode();

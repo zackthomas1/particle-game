@@ -1,17 +1,16 @@
-#version 330 core
+#version 430 core
 
 layout (location = 0) in vec2 aCoord;
 layout (location = 1) in vec2 aTexCoord;
-layout (location = 2) in vec2 aPosition;
-// layout (location = 2) in vec2 aSize; 
-// layout (location = 3) in vec4 aColor; 
 
-uniform float uScreenWidth;
-uniform float uScreenHeight;
-uniform float uRadius;  // Particle radius in pixels
+layout(std430, binding=0) readonly buffer positionsSSBO { vec2 positions[]; };
 
-out vec2 texCoord;
-out float colorCyclePhase ;
+layout (location = 0) uniform float uScreenWidth;
+layout (location = 1) uniform float uScreenHeight;
+layout (location = 2) uniform float uRadius;  // Particle radius in pixels
+
+layout (location = 0) out vec2 texCoord;
+layout (location = 1) out float colorCyclePhase;
 
 const int instancesPerColorCycle = 2000;
 
@@ -25,7 +24,7 @@ void main()
     vec2 scaledCoord = aCoord * diameter * pixelScale;
 
     // Convert particle position to NDC
-    vec2 ndcPos = (aPosition * pixelScale) - 1.0;
+    vec2 ndcPos = (positions[gl_InstanceID] * pixelScale) - 1.0;
     ndcPos.y *= -1.0;
 
     texCoord = aTexCoord;

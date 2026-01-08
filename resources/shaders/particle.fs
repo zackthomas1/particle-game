@@ -1,15 +1,11 @@
-#version 330 core
-
-#ifdef GL_ES
-precision mediump float;
-#endif
+#version 430 core
 
 #define PI 3.14159265359
 
 // Texture coordinate from the vertex shader.
 // Typically normalized from [0.0, 1.0]
-in vec2 texCoord;
-in float colorCyclePhase ; 
+layout (location = 0) in vec2 texCoord;
+layout (location = 1) in float colorCyclePhase ; 
 
 out vec4 FragColor;
 

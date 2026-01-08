@@ -27,14 +27,18 @@ typedef struct ParticleProps
 typedef struct ParticlePool
 {
     size_t activeCount;
+    bool pActicve[MAX_PARTICLE_COUNT];
 
     float pLifetimes[MAX_PARTICLE_COUNT];
     float pLifespans[MAX_PARTICLE_COUNT];
 
+    Vector2 pForces[MAX_PARTICLE_COUNT];
+
     Vector2 pPrevPositions[MAX_PARTICLE_COUNT];
     Vector2 pPositions[MAX_PARTICLE_COUNT];     // aPositions
-    Vector2 pVelocities[MAX_PARTICLE_COUNT];    // aVelocity
-    float pMasses[MAX_PARTICLE_COUNT];    // aMass
+    Vector2 pVelocities[MAX_PARTICLE_COUNT];
+
+    float pMasses[MAX_PARTICLE_COUNT];
 }ParticlePool;
 
 // Private methods
