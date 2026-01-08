@@ -33,14 +33,15 @@ static ParticlePool* ConstructParticlePool_()
 
     for (int i = 0; i < MAX_PARTICLE_COUNT; i++) 
     {
-        particles->pLifetimes[i]  = 0.0f;
-        particles->pLifespans[i]  = 0.0f;
+        particles->pLifetimes[i] = 0.0f;
+        particles->pLifespans[i] = 0.0f;
 
+        particles->pForces[i]        = (Vector2){ 0 };
         particles->pPrevPositions[i] = (Vector2){ 0 };
         particles->pPositions[i]     = (Vector2){ 0 };
         particles->pVelocities[i]    = (Vector2){ 0 };
 
-        particles->pMasses[i]  = 0.0f;
+        particles->pMasses[i] = 0.0f;
     }
     return particles;
 }
@@ -81,16 +82,10 @@ void ProjectSelfCollision(const Constraint *this, ParticlePool *particles, float
     Vector2 gradientC   = Vector2Normalize(seperation);
     
     float restLength      = 2.0f * PARTICLE_RADIUS;
-    float constraintEval  = (distance - restLength);
+    float constraintEval  = 0.5f * (distance - restLength);
     float iInvMass        = 1.0f / particles->pMasses[i], jInvMass = 1.0f / particles->pMasses[j];
     
     float lambda = constraintEval / (iInvMass + jInvMass);
-    
-    // Clamp maximum displacement to prevent instability
-    // Maximum displacement per iteration should not exceed particle radius / substeps
-    float maxDisplacement = PARTICLE_RADIUS / (float)PHYSICS_SUBSTEPS;
-    float maxLambda = maxDisplacement / fmaxf(iInvMass, jInvMass);
-    lambda = Clamp(lambda, -maxLambda, maxLambda);
 
     Vector2 deltaPi = Vector2Scale( gradientC, (lambda * iInvMass));
     Vector2 deltaPj = Vector2Scale( gradientC, (-1.0f * lambda * jInvMass));
@@ -262,15 +257,20 @@ static void UpdateParticleAttributes_(ParticleSystem *system)
 
 static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
 {
+    // Sum external forces on each particle position
+    for (size_t i = 0; i < system->particles_->activeCount; i++)
+    {
+        system->particles_->pForces[i] = CalculateForces_(system->particles_->pPositions[i],
+            system->particles_->pVelocities[i],
+            system->particles_->pMasses[i],
+            system->forces_);
+    }
+
     // Initial particle position estimate
     for (size_t i = 0; i < system->particles_->activeCount; i++)
     {
         const float inverseMass = 1.0f / system->particles_->pMasses[i];
-        const Vector2 externalForces = CalculateForces_(system->particles_->pPositions[i],
-            system->particles_->pVelocities[i],
-            system->particles_->pMasses[i],
-            system->forces_);
-        const Vector2 deltaV = Vector2Scale(externalForces, (deltaTime * inverseMass));
+        const Vector2 deltaV = Vector2Scale(system->particles_->pForces[i], (deltaTime * inverseMass));
 
         system->particles_->pVelocities[i]  = Vector2Add(system->particles_->pVelocities[i], deltaV);
         system->particles_->pPrevPositions[i] = system->particles_->pPositions[i];
@@ -305,6 +305,7 @@ static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
                 (1.0f / deltaTime));
     }
 
+    //
     HandleBoundaryCollisions_(system);
 }
 
