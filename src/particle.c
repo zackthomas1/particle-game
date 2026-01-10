@@ -339,6 +339,7 @@ static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
     }
 
     // Remove collision constraints
+    // NOTE: Collision constraints must be added last because of removal strategy invariant.
     arrsetlen(system->constraints_, (arrlen(system->constraints_) - collisionCount));
     PASSERT((arrlen(system->constraints_) >= 0), LOG_ERROR, "");
 
@@ -370,6 +371,7 @@ ParticleSystem* ConstructParticleSystem(uint32_t left, uint32_t right, uint32_t 
     system->emitter.radius      = EMITTER_RADIUS;
     
     system->constraints_    = NULL;
+    arrsetcap(system->constraints_, MAX_PARTICLE_COUNT / 2);    // estimate likely maximum number of constraints
 
     InitForcePool_();
     system->forces_         = NULL;
