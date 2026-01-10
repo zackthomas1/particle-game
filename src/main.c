@@ -27,18 +27,20 @@ int main ()
     Camera2D camera = { 0 };
     camera.zoom = 1.0f;
 
+    // Initialize particle rendering pipeline
+    SearchAndSetResourceDir("resources");
+    Shader particleShader = LoadShader("shaders/particle.vs", "shaders/particle.fs");
+    InitParticleRender(&particleShader, (float)screenWidth, (float)screenHeight);
+
     // Initialize particle system
     ParticleSystem *particleSystem = ConstructParticleSystem(0, screenWidth, 0, screenHeight);
     ParticleEmitter *emitter = &particleSystem->emitter;
+
+    // Initialize forces
     Force *gravity = AddForce(particleSystem, FORCE_GRAVITY);
     Force *attractor = AddForce(particleSystem, FORCE_ATTRACT);
     Force *repulsor = AddForce(particleSystem, FORCE_REPULSE);
 
-     // Initialize particle rendering pipeline
-    SearchAndSetResourceDir("resources");
-    Shader particleShader = LoadShader("shaders/particle.vs", "shaders/particle.fs");
-
-    InitParticleRender(&particleShader, (float)screenWidth, (float)screenHeight);
     // Main game loop
     while (!WindowShouldClose())        // run the loop until the user presses ESCAPE or presses the Close button on the window
     {
@@ -135,7 +137,7 @@ int main ()
     }
     // De-Initialization
     // ------------------------
-    ShutdownParticleRender();
+    CleanUpParticleRender();
     DestructParticleSystem(particleSystem);
     CloseWindow();
     return 0;
