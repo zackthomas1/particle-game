@@ -3,8 +3,6 @@
 layout (location = 0) in vec2 aCoord;
 layout (location = 1) in vec2 aTexCoord;
 layout (location = 2) in vec2 aPosition;
-// layout (location = 2) in vec2 aSize; 
-// layout (location = 3) in vec4 aColor; 
 
 uniform float uScreenWidth;
 uniform float uScreenHeight;

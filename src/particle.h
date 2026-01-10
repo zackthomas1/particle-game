@@ -2,19 +2,14 @@
 #include "raylib.h"
 #include "config.h"
 
+#define MAX_FORCES 10
 #define MAX_PARTICIPANTS 4
-#define PHYSICS_SUBSTEPS 4
 
 // Forward declaration
 typedef struct Hash Hash;
 
 // Particles
 // -----------------
-typedef enum { 
-    WATER, 
-    SAND,
-} ParticleType;
-
 typedef struct ParticleProps
 {
     float variance;
@@ -33,8 +28,8 @@ typedef struct ParticlePool
 
     Vector2 pPrevPositions[MAX_PARTICLE_COUNT];
     Vector2 pPositions[MAX_PARTICLE_COUNT];     // aPositions
-    Vector2 pVelocities[MAX_PARTICLE_COUNT];    // aVelocity
-    float pMasses[MAX_PARTICLE_COUNT];    // aMass
+    Vector2 pVelocities[MAX_PARTICLE_COUNT];
+    float pMasses[MAX_PARTICLE_COUNT];
 }ParticlePool;
 
 // Private methods
@@ -65,6 +60,17 @@ typedef struct Force
     Vector2 position;
     float mass;
 }Force;
+
+typedef struct ForceObject
+{
+    bool isAllocated;
+    Force obj;
+} ForceObject;
+
+extern ForceObject forcePool[MAX_FORCES];
+
+static Force* BorrowForce_(); 
+static void ReturnForce_(Force *f);
 
 // Constraints
 // -----------
@@ -124,7 +130,7 @@ typedef struct ParticleSystem
     ParticleEmitter emitter;
 
     Constraint *constraints_;
-    Force *forces_;
+    Force **forces_;
     ParticlePool *particles_;
 }ParticleSystem;
 
@@ -134,7 +140,7 @@ extern ParticleProps defaultParticleProps;
 
 // Private methods
 // -----------------
-static Vector2 CalculateForces_(Vector2 pi, Vector2 vi, float mi, const Force *forces);
+static Vector2 CalculateForces_(Vector2 pi, Vector2 vi, float mi, Force **forces);
 static Vector2 CalculateEntryPoint_(Vector2 position, Vector2 velocity, Vector2 surfacePoint, Vector2 surfaceNormal);
 
 static size_t GenerateCollisionConstraints_(ParticleSystem *system);
@@ -151,9 +157,10 @@ void DestructParticleSystem(ParticleSystem *system);
 
 void EmitParticles(ParticleSystem *system, const ParticleProps *props, uint32_t count);
 void UpdateParticles(ParticleSystem *system, float deltaTime);
+void KillParticles(ParticleSystem *system, Vector2 position, float radius);
 
-static inline void AddForce(ParticleSystem *system, Force force){ arrput(system->forces_, force); }
-// static inline void RemoveForce(ParticlePool *system){ }
+Force* AddForce(ParticleSystem *system, ForceType type);
+void RemoveForce(ParticleSystem *system, Force *f);
 
 void InitParticleRender(const Shader *shader, float screenWidth, float screenHeight);
 void ShutdownParticleRender();

@@ -5,10 +5,12 @@
 
 ParticleProps defaultParticleProps = {
     0.5f,                   // varaince
-    100.0f,                 // lifetime
-    { -100.0f, 0.0f },      // velocity
-    10.0f,                  // mass
+    1000.0f,                 // lifetime
+    { 0.0f, 250.0f },      // velocity
+    1.0f,                  // mass
 };
+
+ForceObject forcePool[MAX_FORCES] = { 0 };
 
 // Set up vertex data - unit square (±0.5), scaled in shader
 static const float quadVertices[] = {
@@ -68,6 +70,30 @@ static void KillParticle_(ParticlePool *particles, size_t index)
     SwapParticles_(particles, index, particles->activeCount);
 }
 
+Force* BorrowForce_()
+{
+    for (size_t i = 0; i < MAX_FORCES; i++)
+    {
+        if(!forcePool[i].isAllocated)
+        {
+            forcePool[i].isAllocated = true;
+            return &(forcePool[i].obj);
+        }
+    }
+    PASSERT(false, LOG_WARNING, "Unable to allocate force from memory pool. All objects already allocated.");
+    return NULL;
+}
+
+void ReturnForce_(Force *f)
+{
+    size_t i = ((uintptr_t)f - (uintptr_t)forcePool) / sizeof(ForceObject);
+
+    PASSERT(&(forcePool[i].obj) == f, LOG_ERROR, "Object at ith index of memory pool does not match the returned object");
+    PASSERT(forcePool[i].isAllocated, LOG_ERROR, "Returned unallocated force to pool.");
+    forcePool[i].isAllocated = false; 
+    return; 
+}
+
 void ProjectSelfCollision(const Constraint *this, ParticlePool *particles, float deltaTime)
 {
     PASSERTRETURN(this->participantCount == 2, LOG_WARNING, 
@@ -115,12 +141,12 @@ void ProjectDistance(const Constraint *this, ParticlePool *particles, float delt
     PASSERT(false, LOG_WARNING, "ProjectDistance function not implemented");
 }
 
-static Vector2 CalculateForces_(Vector2 pi, Vector2 vi, float mi, const Force *forces)
+static Vector2 CalculateForces_(Vector2 pi, Vector2 vi, float mi, Force **forces)
 {
     Vector2 externalForces = (Vector2){ 0 };
 
     for(size_t j = 0; j < arrlenu(forces); j++){
-        switch (forces[j].type)
+        switch (forces[j]->type)
         {
         case FORCE_GRAVITY:
             externalForces = Vector2Add(externalForces,
@@ -128,14 +154,18 @@ static Vector2 CalculateForces_(Vector2 pi, Vector2 vi, float mi, const Force *f
             break;
         case FORCE_VISCOUS:
             externalForces = Vector2Add(externalForces,
-                Vector2Scale(vi, (-6.0f * PI * forces[j].viscosity * PARTICLE_RADIUS)));
+                Vector2Scale(vi, (-6.0f * PI * forces[j]->viscosity * PARTICLE_RADIUS)));
             break;
         case FORCE_ATTRACT:
         case FORCE_REPULSE:
-            Vector2 forceDirection = Vector2Normalize(Vector2Subtract(forces[j].position, pi));
-            const float distanceSqr = Vector2DistanceSqr(forces[j].position, pi);
-            float strength = (mi * forces[j].mass) / distanceSqr;
-            if(forces[j].type == FORCE_REPULSE) { strength *= -1.0; }
+            Vector2 forceDirection = Vector2Normalize(Vector2Subtract(forces[j]->position, pi));
+            const float distanceSqr = Vector2DistanceSqr(forces[j]->position, pi);
+            const float softening = 10.0f;
+            float strength = (mi * forces[j]->mass) / (distanceSqr + softening);
+
+            if (distanceSqr < 1.0f) { continue; }
+            if(forces[j]->type == FORCE_REPULSE) { strength *= -1.0; }
+
             externalForces = Vector2Add(externalForces, 
                                 Vector2Scale(forceDirection, strength));
             break;
@@ -181,7 +211,7 @@ static size_t GenerateCollisionConstraints_(ParticleSystem *system)
         {
             size_t pj = system->spatialHash->queryResults[j];
             // Only process pair once (i < pj) to avoid duplicate constraints
-            if ( i >= pj) { continue; }
+            if ( i == pj) { continue; }
             // Skip collision if the other particle is also in grace period
             if (system->particles_->pLifespans[pj] < collisionGracePeriod) { continue; }
             
@@ -201,8 +231,8 @@ static size_t GenerateCollisionConstraints_(ParticleSystem *system)
 static void HandleBoundaryCollisions_(ParticleSystem *system)
 {
     ParticlePool *particles = system->particles_;
-    const float restitution = 0.8;
-    const float friction = 0.1;
+    const float restitution = 0.7;
+    const float friction = 0.01;
     for (size_t i = 0; i < particles->activeCount; i++)
     {
         Vector2 *pos = &particles->pPositions[i];
@@ -254,10 +284,7 @@ static void UpdateParticlesLife_(ParticleSystem *system, float deltaTime)
 
 static void UpdateParticleAttributes_(ParticleSystem *system)
 {
-    for (size_t i = 0; i < system->particles_->activeCount; i++)
-    {
-        const float t = (system->particles_->pLifespans[i] / system->particles_->pLifetimes[i]);
-    }
+    return;
 }
 
 static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
@@ -334,6 +361,7 @@ void DestructParticleSystem(ParticleSystem *system)
 {
     DestructHash(system->spatialHash);
     arrfree(system->constraints_);
+    for (size_t i = 0; i < arrlen(system->forces_); i++) { ReturnForce_(system->forces_[i]); }
     arrfree(system->forces_);
     DestructParticlePool_(system->particles_);
     free(system);
@@ -368,7 +396,7 @@ void UpdateParticles(ParticleSystem *system, float deltaTime)
     PASSERTRETURN((deltaTime > EPSILON), LOG_WARNING, "delta equal to zero. Skipping update step");
 
     UpdateParticlesLife_(system, deltaTime);
-    UpdateParticleAttributes_(system);
+    // UpdateParticleAttributes_(system);
 
     const int substeps = PHYSICS_SUBSTEPS;
     const float deltaTimeSubstep = deltaTime / (float)substeps;
@@ -376,6 +404,48 @@ void UpdateParticles(ParticleSystem *system, float deltaTime)
     {
         UpdateParticlesMotion_(system, deltaTimeSubstep);
     }
+}
+
+void KillParticles(ParticleSystem *system, Vector2 position, float radius)
+{
+    QueryHashPoint(system->spatialHash, position, radius);
+    for (size_t i = 0; i < arrlen(system->spatialHash->queryResults); i++) 
+    {
+        size_t pi = system->spatialHash->queryResults[i];
+        if(Vector2Distance(system->particles_->pPositions[pi], position) < radius)
+        {
+            KillParticle_(system->particles_, pi);
+        }
+    }
+}
+
+Force* AddForce(ParticleSystem *system, ForceType type)
+{
+    Force *f = BorrowForce_();
+    if (f == NULL) { return NULL; }
+
+    f->type = type;
+    f->viscosity = AIR_VISCOSITY;
+    f->position = (Vector2) { 0 };
+    f->mass = 0.0f;
+
+    arrput(system->forces_, f);
+
+    return f;
+}
+
+void RemoveForce(ParticleSystem *system, Force *f)
+{
+    for (size_t i = 0; i < arrlen(system->forces_); i++)
+    {
+        if(system->forces_[i] == f) 
+        {
+            arrdel(system->forces_, i);
+            ReturnForce_(f);
+            return;
+        }
+    }
+    PASSERT(false, LOG_ERROR, "Unable to remove force from system. Force not found.");
 }
 
 void InitParticleRender(const Shader *shader, float screenWidth, float screenHeight)
@@ -447,7 +517,7 @@ void DrawForces(const ParticleSystem *system)
 {
     for (size_t i = 0; i < arrlenu(system->forces_); i++)
     {
-        switch (system->forces_[i].type)
+        switch (system->forces_[i]->type)
         {
         case FORCE_GRAVITY:
         DrawCircleV((Vector2){0.0f, 0.0f}, 8.0f, GREEN);
@@ -457,7 +527,7 @@ void DrawForces(const ParticleSystem *system)
             break;
         case FORCE_ATTRACT:
         case FORCE_REPULSE:
-        DrawCircleV(system->forces_[i].position, 8.0f, YELLOW);
+        DrawCircleV(system->forces_[i]->position, 8.0f, YELLOW);
             break;
         default:
             break;
