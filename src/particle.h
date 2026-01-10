@@ -32,13 +32,6 @@ typedef struct ParticlePool
     float pMasses[MAX_PARTICLE_COUNT];
 }ParticlePool;
 
-// Private methods
-static ParticlePool* ConstructParticlePool_();
-static void DestructParticlePool_(ParticlePool *particles);
-
-static void SwapParticles_(ParticlePool *particles, size_t i, size_t j);
-static void KillParticle_(ParticlePool *particles, size_t index);
-
 // Forces
 // ---------
 typedef enum ForceType
@@ -63,14 +56,12 @@ typedef struct Force
 
 typedef struct ForceObject
 {
-    bool isAllocated;
-    Force obj;
+    Force force;
+    struct ForceObject *next;
 } ForceObject;
 
 extern ForceObject forcePool[MAX_FORCES];
-
-static Force* BorrowForce_(); 
-static void ReturnForce_(Force *f);
+extern ForceObject *forceFreeList;
 
 // Constraints
 // -----------
@@ -87,20 +78,14 @@ typedef enum ConstraintType
 
 struct Constraint
 {
-    ConstraintType type;
-    size_t participants[MAX_PARTICIPANTS];
-    size_t participantCount;
-    ProjectConstraintFn ProjectFn;
+    ConstraintType type;                    // unilateral (Cj(xi...xn) = 0) or bilateral (Cj(xi...xn) <= 0)
+    size_t participants[MAX_PARTICIPANTS];  // set of indices
 
-    // 
-    Vector2 surfaceNormal;
-    Vector2 entryPoint;
+    size_t participantCount;                // cardinality
 
-    // int nj               // carrdinality
-    // ConstraintFn *Cj     // scalar constraint function
-    // indices              // set of indices
+    ProjectConstraintFn ProjectFn;          // scalar constraint function
+
     // float kj             // stiffness parameter
-    // type                 // unilateral (Cj(xi...xn) = 0) or bilateral (Cj(xi...xn) <= 0)
 };
 
 void ProjectSelfCollision(const Constraint *this, ParticlePool *particles, float deltaTime);
@@ -130,25 +115,13 @@ typedef struct ParticleSystem
     ParticleEmitter emitter;
 
     Constraint *constraints_;
-    Force **forces_;
+    ForceObject *forces_;
     ParticlePool *particles_;
 }ParticleSystem;
 
 // declare extern variables
 // -----------------
 extern ParticleProps defaultParticleProps;
-
-// Private methods
-// -----------------
-static Vector2 CalculateForces_(Vector2 pi, Vector2 vi, float mi, Force **forces);
-static Vector2 CalculateEntryPoint_(Vector2 position, Vector2 velocity, Vector2 surfacePoint, Vector2 surfaceNormal);
-
-static size_t GenerateCollisionConstraints_(ParticleSystem *system);
-static void HandleBoundaryCollisions_(ParticleSystem *system);
-
-static void UpdateParticlesLife_(ParticleSystem *system, float deltaTime);
-static void UpdateParticleAttributes_(ParticleSystem *system);
-static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime);
 
 // Interface methods
 // -----------------
@@ -163,7 +136,7 @@ Force* AddForce(ParticleSystem *system, ForceType type);
 void RemoveForce(ParticleSystem *system, Force *f);
 
 void InitParticleRender(const Shader *shader, float screenWidth, float screenHeight);
-void ShutdownParticleRender();
+void CleanUpParticleRender();
 
 void DrawParticlesInstanced(const ParticleSystem *system);
 
