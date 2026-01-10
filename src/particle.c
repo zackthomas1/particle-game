@@ -504,37 +504,6 @@ void DrawParticlesInstanced(const ParticleSystem *system)
     rlDisableShader();
 }
 
-void DrawParticlesPoints(const ParticleSystem *system)
-{
-    for (size_t i = 0; i < system->particles_->activeCount; i++)
-    {
-        DrawPixelV(system->particles_->pPositions[i],
-        RED);
-    }
-}
-
-void DrawForces(const ParticleSystem *system)
-{
-    for (size_t i = 0; i < arrlenu(system->forces_); i++)
-    {
-        switch (system->forces_[i]->type)
-        {
-        case FORCE_GRAVITY:
-        DrawCircleV((Vector2){0.0f, 0.0f}, 8.0f, GREEN);
-        break;
-        case FORCE_VISCOUS:
-        DrawCircleV((Vector2){0.0f, 0.0f}, 8.0f, BLUE);
-            break;
-        case FORCE_ATTRACT:
-        case FORCE_REPULSE:
-        DrawCircleV(system->forces_[i]->position, 8.0f, YELLOW);
-            break;
-        default:
-            break;
-        }
-    }
-}
-
 void AddSelfCollisionConstraint(ParticleSystem *system, size_t i, size_t j)
 {
     Constraint c = { 0 };
