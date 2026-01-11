@@ -43,7 +43,7 @@ int main (int argc, char *argv[])
     TraceLog(LOG_INFO, "RLGL: Version %d", rlGetVersion());
 
     // Create the window and OpenGL context
-    InitWindow((int)screenWidth, (int)screenHeight, "Hello Raylib");
+    InitWindow((int)screenWidth, (int)screenHeight, "Particle Game");
 
     int currentFPS = 60;
     SetTargetFPS(currentFPS);
