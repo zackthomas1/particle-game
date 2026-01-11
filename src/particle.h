@@ -95,6 +95,12 @@ void ProjectDistance(const Constraint *this, ParticlePool *particles, float delt
 
 // System
 // ----------
+typedef enum IntegratorType
+{
+    INTEGRATOR_EULER,
+    INTEGRATOR_VERLET,
+} IntegratorType;
+
 typedef struct ParticleEmitter
 {
     Vector2 position;
@@ -118,6 +124,8 @@ typedef struct ParticleSystem
     Constraint *constraints_;
     ForcePool forces_;
     ParticlePool *particles_;
+
+    void (*IntegrationFn)(struct ParticleSystem *system, float deltaTime);
 }ParticleSystem;
 
 // declare extern variables
@@ -126,7 +134,7 @@ extern ParticleProps defaultParticleProps;
 
 // Interface methods
 // -----------------
-ParticleSystem* ConstructParticleSystem(uint32_t left, uint32_t right, uint32_t top, uint32_t bottom);
+ParticleSystem* ConstructParticleSystem(IntegratorType integrator, Vector4 boundary);
 void DestructParticleSystem(ParticleSystem *system);
 
 void EmitParticles(ParticleSystem *system, const ParticleProps *props, uint32_t count);

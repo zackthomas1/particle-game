@@ -5,10 +5,35 @@
 const int screenWidth = 800, screenHeight = 450;
 const KeyboardKey attractorKey = KEY_A, replusorKey = KEY_D, emitterKey = KEY_W, absorbKey = KEY_S;
 
+IntegratorType ParseIntegratorArg(int argc, char *argv[])
+{
+    for (int i = 1; i < argc; i++)
+    {
+        if(strcmp(argv[i], "-euler") == 0 || strcmp(argv[i], "--euler") == 0)
+        {
+            TraceLog(LOG_INFO, "Main: Integrator argument selected Euler Integration.");
+            return INTEGRATOR_EULER;
+        } else if(strcmp(argv[i], "-verlet") == 0 || strcmp(argv[i], "--verlet") == 0)
+        {
+            TraceLog(LOG_INFO, "Main: Integrator argument selected Verlet Integration.");
+            return INTEGRATOR_VERLET;
+        } else if(strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
+        {
+            printf("Usage: %s [options]\n", argv[0]);
+            printf("Options:\n");
+            printf("  --euler    Use Euler integration (Default)\n");
+            printf("  --verlet   Use Verlet integration\n");
+            exit(0);
+        }
+    }
+    TraceLog(LOG_INFO, "Main: No Integrator argument passed. Defaulting to Euler Integration.");
+    return INTEGRATOR_EULER;
+}
+
 // ------------------------
 // Program main entry point
 // ------------------------
-int main ()
+int main (int argc, char *argv[])
 {
     // Initialization
     // ------------------------   
@@ -33,7 +58,8 @@ int main ()
     InitParticleRender(&particleShader, (float)screenWidth, (float)screenHeight);
 
     // Initialize particle system
-    ParticleSystem *particleSystem = ConstructParticleSystem(0, screenWidth, 0, screenHeight);
+    const Vector4 boundary = (Vector4){ 0, screenWidth, 0, screenHeight };
+    ParticleSystem *particleSystem = ConstructParticleSystem(ParseIntegratorArg(argc, argv), boundary);
     ParticleEmitter *emitter = &particleSystem->emitter;
 
     // Initialize forces

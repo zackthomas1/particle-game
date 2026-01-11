@@ -1,7 +1,10 @@
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <assert.h>
 #include <math.h>
+#include <string.h>
+
 #include "stb_ds.h"
 
 #include "raylib.h"

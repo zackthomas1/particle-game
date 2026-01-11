@@ -36,9 +36,9 @@ static ParticlePool* ConstructParticlePool_()
         particles->pLifetimes[i]  = 0.0f;
         particles->pLifespans[i]  = 0.0f;
 
-        particles->pPrevPositions[i] = (Vector2){ 0 };
-        particles->pPositions[i]     = (Vector2){ 0 };
-        particles->pVelocities[i]    = (Vector2){ 0 };
+        particles->pPrevPositions[i]    = (Vector2){ 0 };
+        particles->pPositions[i]        = (Vector2){ 0 };
+        particles->pVelocities[i]       = (Vector2){ 0 };
 
         particles->pMasses[i]  = 0.0f;
     }
@@ -252,23 +252,52 @@ static void UpdateParticleAttributes_(ParticleSystem *system)
     return;
 }
 
-static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
+static void IntegrateVerlet_(ParticleSystem *system, float deltaTime)
 {
-    // Initial particle position estimate
     for (size_t i = 0; i < system->particles_->activeCount; i++)
     {
-        const float inverseMass = 1.0f / system->particles_->pMasses[i];
-        const Vector2 externalForces = CalculateForces_(&system->forces_,
+        Vector2 forces = CalculateForces_(&system->forces_,
             system->particles_->pPositions[i],
             system->particles_->pVelocities[i],
             system->particles_->pMasses[i]);
-        const Vector2 deltaV = Vector2Scale(externalForces, (deltaTime * inverseMass));
 
-        system->particles_->pVelocities[i]  = Vector2Add(system->particles_->pVelocities[i], deltaV);
+        system->particles_->pPrevPositions[i] = system->particles_->pPositions[i];
+        system->particles_->pPositions[i] = Vector2Add(
+                                                Vector2Add(system->particles_->pPositions[i],
+                                                    Vector2Scale(system->particles_->pVelocities[i], deltaTime)),
+                                                        Vector2Scale(forces, 
+                                                            (deltaTime * deltaTime * 1.0f / system->particles_->pMasses[i])));
+    }
+}
+
+static void IntegrateEuler_(ParticleSystem *system, float deltaTime)
+{
+    // Update particle velocites
+    for (size_t i = 0; i < system->particles_->activeCount; i++)
+    {
+        Vector2 forces = CalculateForces_(&system->forces_,
+            system->particles_->pPositions[i],
+            system->particles_->pVelocities[i],
+            system->particles_->pMasses[i]);
+
+        system->particles_->pVelocities[i]  = Vector2Add(system->particles_->pVelocities[i],
+                                                Vector2Scale(forces,
+                                                    (deltaTime * 1.0f / system->particles_->pMasses[i])));
+    }
+
+    // Update particle positions
+    for (size_t i = 0; i < system->particles_->activeCount; i++)
+    {
         system->particles_->pPrevPositions[i] = system->particles_->pPositions[i];
         system->particles_->pPositions[i] = Vector2Add(system->particles_->pPositions[i], 
             Vector2Scale(system->particles_->pVelocities[i], deltaTime));
     }
+}
+
+static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
+{
+    // perform physics simulation updating particle attributes
+    system->IntegrationFn(system, deltaTime);
 
     // Construct Spatial hash map of current particle positions.
     ClearHash(system->spatialHash);
@@ -301,16 +330,16 @@ static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
     HandleBoundaryCollisions_(system);
 }
 
-ParticleSystem* ConstructParticleSystem(uint32_t left, uint32_t right, uint32_t bottom, uint32_t top)
+ParticleSystem* ConstructParticleSystem(IntegratorType integrator, Vector4 boundary)
 {
     ParticleSystem* system = (ParticleSystem*)malloc(sizeof(ParticleSystem));
     PASSERT(system, LOG_FATAL, "Failed to allocate particle pool");
     if(!system) { return NULL; }
 
-    system->boundaryBox.left = left;
-    system->boundaryBox.right = right;
-    system->boundaryBox.bottom = bottom;
-    system->boundaryBox.top = top;
+    system->boundaryBox.left    = boundary.x;
+    system->boundaryBox.right   = boundary.y;
+    system->boundaryBox.bottom  = boundary.z;
+    system->boundaryBox.top     = boundary.w;
     system->spatialHash = ConstructHash(2.0f * PARTICLE_RADIUS);
 
     system->emitter.position    = (Vector2){ 0 };
@@ -321,6 +350,8 @@ ParticleSystem* ConstructParticleSystem(uint32_t left, uint32_t right, uint32_t 
     system->forces_ = (ForcePool){ 0 };
 
     system->particles_ = ConstructParticlePool_();
+
+    system->IntegrationFn = integrator == INTEGRATOR_VERLET ? IntegrateVerlet_ : IntegrateEuler_;
 
     return system;
 }
