@@ -140,17 +140,6 @@ void ProjectSelfCollision(const Constraint *this, ParticlePool *particles, float
     particles->pPositions[j] = Vector2Add(pj, deltaPj);
 }
 
-void ProjectSurfaceCollision(const Constraint *this, ParticlePool *particles, float deltaTime)
-{
-    PASSERTRETURN(this->participantCount == 1, LOG_WARNING,
-        "Incorrect number of participants in self collision constraint. Constraint participants must equal 1.");
-    const size_t i = this->participants[0];
-    const Vector2 pi = particles->pPositions[i];
-
-    Vector2 deltaPi = Vector2Scale(this->surfaceNormal, -1.0f * Vector2DotProduct(Vector2Subtract(pi, this->entryPoint), this->surfaceNormal));
-    particles->pPositions[i] = Vector2Add(pi, deltaPi);
-}
-
 void ProjectDistance(const Constraint *this, ParticlePool *particles, float deltaTime)
 {
     PASSERT(false, LOG_WARNING, "ProjectDistance function not implemented");
@@ -564,20 +553,6 @@ void AddSelfCollisionConstraint(ParticleSystem *system, size_t i, size_t j)
     c.participantCount = 2;
     c.ProjectFn = ProjectSelfCollision;
 
-    arrput(system->constraints_, c);
-}
-
-void AddSurfaceCollisionConstraint(ParticleSystem *system, size_t i, Vector2 sn, Vector2 ep)
-{
-    Constraint c = { 0 };
-    c.type = CONSTRAINT_SURFACE_COLLISION;
-    c.participants[0] = i;
-    c.participantCount = 1;
-    c.ProjectFn = ProjectSurfaceCollision;
-
-    c.surfaceNormal = sn;
-    c.entryPoint = ep;
-    
     arrput(system->constraints_, c);
 }
 

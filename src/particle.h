@@ -89,7 +89,6 @@ struct Constraint
 };
 
 void ProjectSelfCollision(const Constraint *this, ParticlePool *particles, float deltaTime);
-void ProjectSurfaceCollision(const Constraint *this, ParticlePool *particles, float deltaTime);
 void ProjectDistance(const Constraint *this, ParticlePool *particles, float deltaTime);
 
 // System
@@ -141,5 +140,4 @@ void CleanUpParticleRender();
 void DrawParticlesInstanced(const ParticleSystem *system);
 
 void AddSelfCollisionConstraint(ParticleSystem *system, size_t i, size_t j);
-void AddSurfaceCollisionConstraint(ParticleSystem *system, size_t i, Vector2 sn, Vector2 ep);
 void AddDistanceConstraint(ParticleSystem *system, size_t i, size_t j);
