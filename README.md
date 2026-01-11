@@ -1,7 +1,7 @@
-![Screen shot](./docs/Gameplay_ScreenShot.PNG)
-
 # Particle Game
 A cross-platform real-time dynmaical particle system simulation built with Raylib.
+
+![Screen shot](./docs/Gameplay_ScreenShot.PNG)
 
 # Basic Setup
 
