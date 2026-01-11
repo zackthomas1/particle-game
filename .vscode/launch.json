@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/bin/Debug/${workspaceFolderBasename}.exe",
-            "args": [],
+            "args": ["--verlet"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
