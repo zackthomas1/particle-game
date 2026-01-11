@@ -67,7 +67,17 @@ https://github.com/skeeto/w64devkit/releases
 # Output files
 The built code will be in the bin dir
 
-# License
+**Compile**
+```
+mingw32-make
+```
+
+**Run**
+```
+.\bin\{configuration}\particle-game.exe
+```
+
+# raylib-game-template License
 Copyright (c) 2020-2025 Jeffery Myers
 
 This software is provided "as-is", without any express or implied warranty. In no event 
@@ -84,13 +94,3 @@ applications, and to alter it and redistribute it freely, subject to the followi
   as being the original software.
 
   3. This notice may not be removed or altered from any source distribution.
-
-**Compile**
-```
-mingw32-make
-```
-
-**Run**
-```
-.\bin\{configuration}\particle-game.exe
-```
