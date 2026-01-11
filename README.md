@@ -4,11 +4,11 @@
 A cross-platform real-time dynmaical particle system simulation built with Raylib.
 
 ## How to Play
-* Mouse - move cursor to move emitor
-* W - Emit/spawn particles into the scene from cursor. 
-* S - Kill/despawn particles under cursor.
-* A - Attract particles towards mouse cursor.
-* D - Repulse particles away from mouse cursor.
+* **Mouse**: move cursor to move emitor
+* **W**: Emit/spawn particles into the scene from cursor. 
+* **S**: Kill/despawn particles under cursor.
+* **A**: Attract particles towards mouse cursor.
+* **D**: Repulse particles away from mouse cursor.
 
 # Basic Setup
 
