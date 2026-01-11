@@ -37,9 +37,9 @@ int main ()
     ParticleEmitter *emitter = &particleSystem->emitter;
 
     // Initialize forces
-    Force *gravity = AddForce(particleSystem, FORCE_GRAVITY);
-    Force *attractor = AddForce(particleSystem, FORCE_ATTRACT);
-    Force *repulsor = AddForce(particleSystem, FORCE_REPULSE);
+    uint16_t gravity    = AddForce(particleSystem, FORCE_GRAVITY);
+    uint16_t attractor  = AddForce(particleSystem, FORCE_ATTRACT);
+    uint16_t repulsor   = AddForce(particleSystem, FORCE_REPULSE);
 
     // Main game loop
     while (!WindowShouldClose())        // run the loop until the user presses ESCAPE or presses the Close button on the window
@@ -52,17 +52,17 @@ int main ()
         UpdateParticles(particleSystem, deltaTime);
 
         emitter->position = GetMousePosition();
-        attractor->position = GetMousePosition();
-        repulsor->position = GetMousePosition();
-        attractor->mass = 0.f;
-        repulsor->mass = 0.f;
+        FORCE(particleSystem, attractor).position = GetMousePosition();
+        FORCE(particleSystem, repulsor).position = GetMousePosition();
+        FORCE(particleSystem, attractor).mass = 0.f;
+        FORCE(particleSystem, repulsor).mass = 0.f;
         if (IsKeyDown(attractorKey))
         {
             isForceActive = true;
-            attractor->mass = 9e5;
+            FORCE(particleSystem, attractor).mass = 9e5;
         } else if (IsKeyDown(replusorKey)) {
             isForceActive = true;
-            repulsor->mass = 5e5;
+            FORCE(particleSystem, repulsor).mass = 5e5;
         } else if(IsKeyDown(emitterKey)) {
             isEmitActive = true;
             EmitParticles(particleSystem, &defaultParticleProps, 4);

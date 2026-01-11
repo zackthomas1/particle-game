@@ -10,9 +10,6 @@ ParticleProps defaultParticleProps = {
     1.0f,                  // mass
 };
 
-ForceObject forcePool[MAX_FORCES] = { 0 };
-ForceObject *forceFreeList = NULL;
-
 // Set up vertex data - unit square (±0.5), scaled in shader
 static const float quadVertices[] = {
     // positions    // texCoords
@@ -71,44 +68,6 @@ static void KillParticle_(ParticlePool *particles, size_t index)
     SwapParticles_(particles, index, particles->activeCount);
 }
 
-static void InitForcePool_()
-{
-    for (size_t i = 0; i < MAX_FORCES; i++)
-    {
-        ForceObject *obj = &forcePool[i];
-        obj->next = forceFreeList;
-        forceFreeList = obj;
-    }
-}
-
-static void CleanUpForcePool_()
-{
-    forceFreeList = NULL;
-}
-
-ForceObject* BorrowForce_()
-{
-    if (forceFreeList)
-    {
-        ForceObject *obj = forceFreeList;
-        forceFreeList = forceFreeList->next;
-        return obj;
-    }
-
-    PASSERT(false, LOG_WARNING, "Unable to allocate force from memory pool. All objects already allocated.");
-    return NULL;
-}
-
-void ReturnForce_(ForceObject *f)
-{
-    size_t i = ((uintptr_t)f - (uintptr_t)forcePool) / sizeof(ForceObject);
-    PASSERT(&(forcePool[i]) == f, LOG_ERROR, "Object at ith index of memory pool does not match the returned object");
-
-    ForceObject *returningObj = &(forcePool[i]);
-    returningObj->next = forceFreeList;
-    forceFreeList = returningObj;
-}
-
 void ProjectSelfCollision(const Constraint *this, ParticlePool *particles, float deltaTime)
 {
     PASSERTRETURN(this->participantCount == 2, LOG_WARNING, 
@@ -145,14 +104,13 @@ void ProjectDistance(const Constraint *this, ParticlePool *particles, float delt
     PASSERT(false, LOG_WARNING, "ProjectDistance function not implemented");
 }
 
-static Vector2 CalculateForces_(Vector2 pi, Vector2 vi, float mi, ForceObject *forces)
+static Vector2 CalculateForces_(const ForcePool *forces, Vector2 pi, Vector2 vi, float mi)
 {
     Vector2 externalForces = (Vector2){ 0 };
 
-    ForceObject *node = forces;
-    while (node)
+    for (size_t i = 0; i < forces->activeCount; i++)
     {
-        const Force *force = &(node->force);
+        const Force *force = &(forces->objects[i]);
         switch (force->type)
         {
         case FORCE_GRAVITY:
@@ -170,7 +128,7 @@ static Vector2 CalculateForces_(Vector2 pi, Vector2 vi, float mi, ForceObject *f
             const float softening = 10.0f;
             float strength = (mi * force->mass) / (distanceSqr + softening);
 
-            if (distanceSqr < 1.0f) { node = node->next; continue; }
+            if (distanceSqr < 1.0f) { continue; }
             if(force->type == FORCE_REPULSE) { strength *= -1.0; }
 
             externalForces = Vector2Add(externalForces, 
@@ -179,7 +137,6 @@ static Vector2 CalculateForces_(Vector2 pi, Vector2 vi, float mi, ForceObject *f
         default:
             break;
         }
-        node = node->next;
     }
 
     PASSERT(isfinite(externalForces.x) && isfinite(externalForces.y), LOG_ERROR, 
@@ -301,10 +258,10 @@ static void UpdateParticlesMotion_(ParticleSystem *system, float deltaTime)
     for (size_t i = 0; i < system->particles_->activeCount; i++)
     {
         const float inverseMass = 1.0f / system->particles_->pMasses[i];
-        const Vector2 externalForces = CalculateForces_(system->particles_->pPositions[i],
+        const Vector2 externalForces = CalculateForces_(&system->forces_,
+            system->particles_->pPositions[i],
             system->particles_->pVelocities[i],
-            system->particles_->pMasses[i],
-            system->forces_);
+            system->particles_->pMasses[i]);
         const Vector2 deltaV = Vector2Scale(externalForces, (deltaTime * inverseMass));
 
         system->particles_->pVelocities[i]  = Vector2Add(system->particles_->pVelocities[i], deltaV);
@@ -361,9 +318,7 @@ ParticleSystem* ConstructParticleSystem(uint32_t left, uint32_t right, uint32_t 
     
     system->constraints_    = NULL;
     arrsetcap(system->constraints_, MAX_PARTICLE_COUNT / 2);    // estimate likely maximum number of constraints
-
-    InitForcePool_();
-    system->forces_         = NULL;
+    system->forces_ = (ForcePool){ 0 };
 
     system->particles_ = ConstructParticlePool_();
 
@@ -374,15 +329,7 @@ void DestructParticleSystem(ParticleSystem *system)
 {
     DestructHash(system->spatialHash);
     arrfree(system->constraints_);
-
-    while (system->forces_) 
-    { 
-        ForceObject *next = system->forces_->next;
-        ReturnForce_(system->forces_); 
-        system->forces_ = next; 
-    }
-    system->forces_ = NULL;
-    CleanUpForcePool_();
+    hmfree(system->forces_.addressMap);
 
     DestructParticlePool_(system->particles_);
     free(system);
@@ -440,52 +387,66 @@ void KillParticles(ParticleSystem *system, Vector2 position, float radius)
     }
 }
 
-Force* AddForce(ParticleSystem *system, ForceType type)
+uint32_t AddForce(ParticleSystem *system, ForceType type)
 {
-    ForceObject *forceObject = BorrowForce_();
-    if (forceObject == NULL) { return NULL; }
-    
-    Force *f = &(forceObject->force);
+    // maintain static uid int across all invocations
+    static uint32_t uid = 0;
+
+    // Get free index in forces_.objects array
+    size_t i = system->forces_.activeCount;
+    PASSERT(i < MAX_FORCES, LOG_WARNING, "active forces count exceeds MAX_FORCES");
+    if(!(i < MAX_FORCES)) { return -1; }
+
+    system->forces_.activeCount += 1;
+
+    // initialize new force
+    Force *f = &(system->forces_.objects[i]);
+    f->uid = uid;
     f->type = type;
     f->viscosity = AIR_VISCOSITY;
     f->position = (Vector2) { 0 };
     f->mass = 0.0f;
 
-    forceObject->next = system->forces_;
-    system->forces_ = forceObject;
-
-    return f;
+    // new force to address map
+    hmput(system->forces_.addressMap, uid, f);
+    return uid++;
 }
 
-void RemoveForce(ParticleSystem *system, Force *f)
+Force* GetForce(ParticleSystem *system, uint32_t uid)
 {
-    ForceObject *current = system->forces_;
-    PASSERT(current != NULL, LOG_ERROR, "No System forces. Head of force list NULL. ");
+    Force *queryForce = (Force*)hmget(system->forces_.addressMap, uid);
+    PASSERT(queryForce != NULL, LOG_WARNING, "Unable to Get Force. Query return NULL.");
+    return queryForce;
+}
 
-    if(&(current->force) == f)
+void RemoveForce(ParticleSystem *system, uint32_t forceId)
+{
+    Force *f = GetForce(system, forceId);
+    if(!f) { return; }
+
+    // Get the index of the force in the object list
+    size_t i = ((uintptr_t)f - (uintptr_t)(system->forces_.objects)) / sizeof(Force);
+
+    // bounds check
+    const bool cond = (i < MAX_FORCES) && (&(system->forces_.objects[i]) == f);
+    PASSERT(cond, LOG_ERROR, "Unable to remove force from system. Force not found.");
+    if (!cond) { return; }
+
+    // remove key from map
+    hmdel(system->forces_.addressMap, forceId);
+
+    // decrement active counter
+    system->forces_.activeCount--;
+    size_t lastIndex = system->forces_.activeCount;
+
+    // Swap with last element only if current index i is not last index
+    if (i != lastIndex)
     {
-        system->forces_ = system->forces_->next;
-        ReturnForce_(current);
-        return;
+        // move last element to hole
+        system->forces_.objects[i] = system->forces_.objects[lastIndex];
+        // Update map to point to new location
+        hmput(system->forces_.addressMap, system->forces_.objects[i].uid, &system->forces_.objects[i]);
     }
-
-    ForceObject *prev = current;
-    current = current->next;
-
-    while (current)
-    {
-        if(&(current->force) == f)
-        {
-            prev->next = current->next;
-            ReturnForce_(current);
-            return;
-        }
-
-        prev = current;
-        current = current->next;
-    }
-
-    PASSERT(false, LOG_ERROR, "Unable to remove force from system. Force not found.");
 }
 
 void InitParticleRender(const Shader *shader, float screenWidth, float screenHeight)

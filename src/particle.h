@@ -44,6 +44,7 @@ typedef enum ForceType
 
 typedef struct Force
 {
+    uint32_t uid;
     ForceType type;
 
     // FORCE_VISCOUS
@@ -54,14 +55,16 @@ typedef struct Force
     float mass;
 }Force;
 
-typedef struct ForceObject
+typedef struct ForcePool
 {
-    Force force;
-    struct ForceObject *next;
-} ForceObject;
+    struct{
+        uint32_t key;
+        Force* value;
+    } *addressMap;
 
-extern ForceObject forcePool[MAX_FORCES];
-extern ForceObject *forceFreeList;
+    size_t activeCount;
+    Force objects[MAX_FORCES];
+} ForcePool;
 
 // Constraints
 // -----------
@@ -84,7 +87,6 @@ struct Constraint
     size_t participantCount;                // cardinality
 
     ProjectConstraintFn ProjectFn;          // scalar constraint function
-
     // float kj             // stiffness parameter
 };
 
@@ -114,7 +116,7 @@ typedef struct ParticleSystem
     ParticleEmitter emitter;
 
     Constraint *constraints_;
-    ForceObject *forces_;
+    ForcePool forces_;
     ParticlePool *particles_;
 }ParticleSystem;
 
@@ -131,8 +133,9 @@ void EmitParticles(ParticleSystem *system, const ParticleProps *props, uint32_t 
 void UpdateParticles(ParticleSystem *system, float deltaTime);
 void KillParticles(ParticleSystem *system, Vector2 position, float radius);
 
-Force* AddForce(ParticleSystem *system, ForceType type);
-void RemoveForce(ParticleSystem *system, Force *f);
+uint32_t AddForce(ParticleSystem *system, ForceType type);
+Force* GetForce(ParticleSystem *system, uint32_t uid);
+void RemoveForce(ParticleSystem *system, uint32_t forceId);
 
 void InitParticleRender(const Shader *shader, float screenWidth, float screenHeight);
 void CleanUpParticleRender();
@@ -141,3 +144,5 @@ void DrawParticlesInstanced(const ParticleSystem *system);
 
 void AddSelfCollisionConstraint(ParticleSystem *system, size_t i, size_t j);
 void AddDistanceConstraint(ParticleSystem *system, size_t i, size_t j);
+
+#define FORCE(system, forceId) (*GetForce(system, forceId))
