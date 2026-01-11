@@ -144,20 +144,6 @@ static Vector2 CalculateForces_(const ForcePool *forces, Vector2 pi, Vector2 vi,
     return externalForces;
 }
 
-static Vector2 CalculateEntryPoint_(Vector2 position, Vector2 velocity, Vector2 surfacePoint, Vector2 surfaceNormal)
-{
-    // t = ((surfacePoint - position) . surfaceNormal) / (velocity . surfaceNormal)
-    const float t = Vector2DotProduct(Vector2Subtract(surfacePoint, position), surfaceNormal) / 
-                        Vector2DotProduct(velocity, surfaceNormal);
-    
-    PASSERT(isfinite(t), LOG_ERROR, 
-        "Entry point invalid because t = inf. |surfacePoint - position| = %.2f", Vector2Distance(surfacePoint, position));
-
-    // position + (t*velocity)
-    const Vector2 ep = Vector2Add(position, Vector2Scale(velocity, t));
-    return ep;
-}
-
 static size_t GenerateCollisionConstraints_(ParticleSystem *system)
 {
     size_t collisionCount = 0;

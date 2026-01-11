@@ -36,7 +36,7 @@ IntegratorType ParseIntegratorArg(int argc, char *argv[])
 int main (int argc, char *argv[])
 {
     // Initialization
-    // ------------------------   
+    // ------------------------
     // Tell the window to use vsync and work on high DPI displays
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
     SetTraceLogLevel(LOG_INFO);
