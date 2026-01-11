@@ -211,7 +211,14 @@ if (downloadRaylib) then
         links {"raylib"}
         
         language "C"
-        cdialect "C17"
+        -- cdialect "C17"
+        filter "action:vs*"
+            cdialect "C17"
+        
+        filter "action:gmake*"
+            buildoptions { "-std=gnu17" }
+            
+        filter {}
 
         includedirs {raylib_dir .. "/src" }
 
